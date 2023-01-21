@@ -1,2 +1,4 @@
 # EMAT3008-ScientificComputing
-Git repository for Scientific Computing module, University of Bristol
+
+Information for module can be found here: https://engmaths.github.io/emat30008/
+
