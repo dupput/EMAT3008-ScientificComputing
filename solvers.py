@@ -1,3 +1,4 @@
+import numpy as np
 
 def euler_step(fun, t, y, h):
     """Perform one step of the Euler method.
@@ -117,3 +118,6 @@ def solve_ode(fun, t0, y0, t_max=None, n_max=None, method='Euler', deltat_max=0.
     #     plt.close()
     # else:
     #     plt.show()
+
+    return np.array(t_array), np.array(y_array)
+
