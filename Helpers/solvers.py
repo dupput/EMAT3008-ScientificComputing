@@ -88,7 +88,7 @@ def heun_step(fun, t, y, h):
     return t, y
 
 
-def solve_ode(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01, filename=None):
+def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01, filename=None):
     """Solve an ordinary differential equation.
 
     Parameters
@@ -133,7 +133,7 @@ def solve_ode(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01
     y_array = [y]
     step = 0
 
-    while (t_max is None or t < t_max) and (n_max is None or step < n_max):
+    while (t_max is None or t <= t_max) and (n_max is None or step <= n_max):
         t, y = method(fun, t, y, deltat_max)
         t_array.append(t)
         y_array.append(y)

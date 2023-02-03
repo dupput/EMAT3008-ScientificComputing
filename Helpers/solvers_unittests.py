@@ -1,7 +1,7 @@
 import unittest   # The test framework
 import numpy as np
 
-from solvers import solve_ode
+from solvers import solve_to
 
 class Test_TestSplitInput(unittest.TestCase):
     def __init__(self, *args, **kwargs):
@@ -13,7 +13,7 @@ class Test_TestSplitInput(unittest.TestCase):
     # Testing the function solve_ode
     def test_1(self):
         with self.assertRaises(ValueError):
-            solve_ode(self.fun, self.t0, self.y0, method='euler')
+            solve_to(self.fun, self.t0, self.y0, method='euler')
 
     
 if __name__ == '__main__':
