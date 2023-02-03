@@ -57,9 +57,38 @@ def rk4_step(fun, t, y, h):
     y = y + h/6*(k1 + 2*k2 + 2*k3 + k4)
 
     return t, y
-        
 
-def solve_ode(fun, t0, y0, t_max=None, n_max=None, method='Euler', deltat_max=0.01, filename=None):
+
+def heun_step(fun, t, y, h):
+    """Perform one step of the Heun method.
+    
+    Parameters
+    ----------
+    fun : function
+        Function f(t, y) to integrate.
+    t : float
+        Current value of t.
+    y : float
+        Current value of y.
+    h : float
+        Step size.
+        
+    Returns
+    -------
+    t : float
+        New value of t.
+    y : float
+        New value of y.
+    """
+    k1 = fun(t, y)
+    k2 = fun(t + h, y + h*k1)
+    t = t + h
+    y = y + h/2*(k1 + k2)
+
+    return t, y
+
+
+def solve_ode(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01, filename=None):
     """Solve an ordinary differential equation.
 
     Parameters
@@ -88,7 +117,7 @@ def solve_ode(fun, t0, y0, t_max=None, n_max=None, method='Euler', deltat_max=0.
     y : array
         Array of y values.
     """
-    METHODS = {'Euler': euler_step, 'RK4': rk4_step}
+    METHODS = {'Euler': euler_step, 'RK4': rk4_step, 'Heun': heun_step}
     if method not in METHODS:
         raise ValueError('Invalid method: {}. Method must be one of {}.'.format(method, METHODS.keys()))
     else:
@@ -120,4 +149,3 @@ def solve_ode(fun, t0, y0, t_max=None, n_max=None, method='Euler', deltat_max=0.
     #     plt.show()
 
     return np.array(t_array), np.array(y_array)
-
