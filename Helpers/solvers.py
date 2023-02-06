@@ -139,13 +139,4 @@ def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01,
         y_array.append(y)
         step += 1
 
-    # plt.plot(t_array, y_array)
-    # plt.xlabel('t')
-    # plt.ylabel('y')
-    # if filename is not None:
-    #     plt.savefig(filename)
-    #     plt.close()
-    # else:
-    #     plt.show()
-
     return np.array(t_array), np.array(y_array)

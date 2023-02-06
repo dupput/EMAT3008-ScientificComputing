@@ -80,24 +80,31 @@ if __name__ == '__main__':
     
     t0 = 0
     y0 = np.array([1, 0])
-    t_max = 10
+    t_max = 20
     deltat_max = 0.1
 
     # Solve ODE
     t_euler, y_euler = solve_to(fun, t0, y0, t_max=t_max, method='Euler', deltat_max=deltat_max)
     t_rk4, y_rk4 = solve_to(fun, t0, y0, t_max=t_max, method='RK4', deltat_max=deltat_max)
-    t_heun, y_heun = solve_to(fun, t0, y0, t_max=t_max, method='Heun', deltat_max=deltat_max)
+    # t_heun, y_heun = solve_to(fun, t0, y0, t_max=t_max, method='Heun', deltat_max=deltat_max)
 
     # Analytical solution
-    y_a = fun_analytical(t_)
+    y_a = fun_analytical(t_rk4)
+
+    # Create subplots
+    fig, (ax1, ax2) = plt.subplots(1, 2)
+
+    # Plot results: y vs t
+    ax1.plot(t_rk4, y_rk4[:, 0], label='RK4')
+    ax1.plot(t_rk4, y_a, '--', label='Analytical')
+    ax1.set(xlabel='t', ylabel='y')
+    ax1.legend()
 
     # # Plot results: y vs y'
-    plt.plot(y_euler[:, 0], y_euler[:, 1], label='Euler')
-    plt.plot(y_rk4[:, 0], y_rk4[:, 1], label='RK4')
-    plt.plot(y_heun[:, 0], y_heun[:, 1], label='Heun')
-    plt.xlabel('y')
-    plt.ylabel('dy/dt')
-    plt.legend()
+    ax2.plot(y_euler[:, 0], y_euler[:, 1], label='Euler')
+    ax2.plot(y_rk4[:, 0], y_rk4[:, 1], label='RK4')
+    ax2.set(xlabel='y', ylabel='dy/dt')
+    ax2.legend()
     plt.show()
 
 
