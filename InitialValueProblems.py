@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 
-from Helpers.solvers import solve_to
+from Helpers.solvers import ODE
 
 if __name__ == '__main__':    
     # Define ODE
@@ -21,7 +21,8 @@ if __name__ == '__main__':
         error = []
 
         for timestep in deltas:
-            t_, y_ = solve_to(fun, t0, y0, t_max=t_max, method=method, deltat_max=timestep)
+            ode = ODE(fun, t0, y0, t_max=t_max, method=method, deltat_max=timestep)
+            t_, y_ = ode.solve_to()
             error.append(np.abs(y_[-1] - fun_analytical(t_max)))
 
         # plt.loglog(deltas, error, '.-', label=method) 
@@ -84,8 +85,11 @@ if __name__ == '__main__':
     deltat_max = 0.1
 
     # Solve ODE
-    t_euler, y_euler = solve_to(fun, t0, y0, t_max=t_max, method='Euler', deltat_max=deltat_max)
-    t_rk4, y_rk4 = solve_to(fun, t0, y0, t_max=t_max, method='RK4', deltat_max=deltat_max)
+    ode = ODE(fun, t0, y0, t_max=t_max, method='Euler', deltat_max=deltat_max)
+    t_euler, y_euler = ode.solve_to()
+    
+    ode = ODE(fun, t0, y0, t_max=t_max, method='RK4', deltat_max=deltat_max)
+    t_rk4, y_rk4 = ode.solve_to()
     # t_heun, y_heun = solve_to(fun, t0, y0, t_max=t_max, method='Heun', deltat_max=deltat_max)
 
     # Analytical solution
