@@ -88,7 +88,8 @@ def heun_step(fun, t, y, h):
     return t, y
 
 
-def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01, filename=None):
+def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01, 
+                filename=None, args=None):
     """Solve an ordinary differential equation.
 
     Parameters
@@ -99,16 +100,18 @@ def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01,
         Initial value of t.
     y0 : float
         Initial value of y.
-    t_max : float
+    t_max : float, optional
         Maximum value of t.
-    n_max : int
+    n_max : int, optional
         Maximum number of steps.
-    method : str
+    method : str, optional
         Integration method. Must be 'Euler' or 'RK4'.
-    deltat_max : float
+    deltat_max : float, optional
         Maximum step size.
-    filename : str
+    filename : str, optional
         Name of file to save plot to. If None, plot is shown but not saved.
+    args : tuple, optional
+        Additional arguments to pass to fun. 
 
     Returns
     -------
@@ -126,6 +129,20 @@ def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01,
     # Check that either t_max or n_max is given
     if t_max is None and n_max is None:
         raise ValueError('Either t_max or n_max must be given.')
+
+    # Check args
+    if args is not None:
+        # Wrap the fun in lambdas to pass through additional parameters.
+        try:
+            _ = [*(args)]
+        except TypeError as exp:
+            suggestion_tuple = (
+                "Supplied 'args' cannot be unpacked. Please supply `args`"
+                f" as a tuple (e.g. `args=({args},)`)"
+            )
+            raise TypeError(suggestion_tuple) from exp
+
+        fun = lambda t, x, fun=fun: fun(t, x, *args)
 
     t = t0
     y = y0
