@@ -88,8 +88,7 @@ def heun_step(fun, t, y, h):
     return t, y
 
 
-def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01, 
-                filename=None, args=None):
+def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01, args=None):
     """Solve an ordinary differential equation.
 
     Parameters
@@ -105,11 +104,9 @@ def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01,
     n_max : int, optional
         Maximum number of steps.
     method : str, optional
-        Integration method. Must be 'Euler' or 'RK4'.
+        Integration method. Can be 'Euler', 'RK4' or 'Heun'.
     deltat_max : float, optional
         Maximum step size.
-    filename : str, optional
-        Name of file to save plot to. If None, plot is shown but not saved.
     args : tuple, optional
         Additional arguments to pass to fun. 
 
@@ -157,3 +154,39 @@ def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01,
         step += 1
 
     return np.array(t_array), np.array(y_array)
+
+
+def shooting(fun, dy_dt, t0, y_dim, t_max=None, n_max=None, method='RK4', deltat_max=0.01, args=None):
+    """Solve an ordinary differential equation.
+
+    Parameters
+    ----------
+    fun : function
+        Function f(t, y) to integrate.
+    dy_dt : function
+        Differential equation to optimize.
+    t0 : float
+        Initial value of t.
+    y_dim: int
+        Number of dimensions of y.
+    t_max : float, optional
+        Maximum value of t.
+    n_max : int, optional
+        Maximum number of steps.
+    method : str, optional
+        Integration method. Can be 'Euler', 'RK4' or 'Heun'.
+    deltat_max : float, optional
+        Maximum step size.
+    args : tuple, optional
+        Additional arguments to pass to fun. 
+
+    Returns
+    -------
+    t : array
+        Array of t values.
+    y : array
+        Array of y values.
+    """
+
+
+
