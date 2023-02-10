@@ -88,7 +88,7 @@ def heun_step(fun, t, y, h):
     return t, y
 
 
-def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01, args=None):
+def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01, function_args=None):
     """Solve an ordinary differential equation.
 
     Parameters
@@ -107,7 +107,7 @@ def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01,
         Integration method. Can be 'Euler', 'RK4' or 'Heun'.
     deltat_max : float, optional
         Maximum step size.
-    args : tuple, optional
+    function_args : tuple, optional
         Additional arguments to pass to fun. 
 
     Returns
@@ -128,18 +128,18 @@ def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01,
         raise ValueError('Either t_max or n_max must be given.')
 
     # Check args
-    if args is not None:
+    if function_args is not None:
         # Wrap the fun in lambdas to pass through additional parameters.
         try:
-            _ = [*(args)]
+            _ = [*function_args]
         except TypeError as exp:
             suggestion_tuple = (
                 "Supplied 'args' cannot be unpacked. Please supply `args`"
-                f" as a tuple (e.g. `args=({args},)`)"
+                f" as a tuple (e.g. `args=({function_args},)`)"
             )
             raise TypeError(suggestion_tuple) from exp
 
-        fun = lambda t, x, fun=fun: fun(t, x, *args)
+        fun = lambda t, x, fun=fun: fun(t, x, *function_args)
 
     t = t0
     y = y0
@@ -156,7 +156,7 @@ def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01,
     return np.array(t_array), np.array(y_array)
 
 
-def shooting(fun, dy_dt, t0, y_dim, t_max=None, n_max=None, method='RK4', deltat_max=0.01, args=None):
+def shooting(fun, dy_dt, t0, y0, y_step=0.01, yn=0, t_max=None, n_max=None, method='RK4', deltat_max=0.01, function_args=None):
     """Solve an ordinary differential equation.
 
     Parameters
@@ -164,11 +164,15 @@ def shooting(fun, dy_dt, t0, y_dim, t_max=None, n_max=None, method='RK4', deltat
     fun : function
         Function f(t, y) to integrate.
     dy_dt : function
-        Differential equation to optimize.
+        Differential equation to optimize. Must be of the form dy/dt = f(t, y).
     t0 : float
         Initial value of t.
-    y_dim: int
-        Number of dimensions of y.
+    y0 : float
+        Initial estimate of y.
+    y_step : float, optional
+        Rate of change of y. Value is a multiplier of the difference between the target and the current value.
+    yn : int, optional
+        Index value of y to vary.
     t_max : float, optional
         Maximum value of t.
     n_max : int, optional
@@ -186,7 +190,45 @@ def shooting(fun, dy_dt, t0, y_dim, t_max=None, n_max=None, method='RK4', deltat
         Array of t values.
     y : array
         Array of y values.
-    """
+    y0 : float
+        Initial conditions
 
+    """
+    # Check y_step
+    if y_step == 0:
+        raise ValueError('y_step must be non-zero.')
+    
+    # Check yn
+    dimension = len(y0)
+    if yn < 0 or yn >= dimension:
+        raise ValueError('yn must be between 0 and {}.'.format(dimension - 1))
+
+    # Set up optimization
+    v0 = y0[yn]
+
+    # Periodic orbit: b = 0.15
+    t, y_ = solve_to(fun, t0, y0, t_max=t_max, method='RK4', deltat_max=deltat_max, args=(1, 0.1, 0.15))
+    deltas = dy_dt(t, y_)
+    dy = deltas[yn]
+
+    print('Initial guess: y0 = {}, dy/dt = {}'.format(y0, dy[-1]))
+
+    iter = 0
+    while np.round(dy[-1], 2) != 0:
+        # Break if y_step is too small
+        v0 += y_step * dy[-1]
+        y0[yn] = v0
+        t, y_ = solve_to(fun, t0, y0, t_max=t_max, method='RK4', deltat_max=deltat_max, args=(1, 0.1, 0.15))
+        deltas = dy_dt(t, y_)
+        dy = deltas[yn]
+
+        # Print progress
+        if iter % 100 == 0:
+            print('y0 = {}, dy/dt = {}, v0 = {}'.format(y0, dy[-1], v0))
+
+    print('Final guess: y0 = {}, dy/dt = {}'.format(y0, dy[-1]))
+
+    return t, y_, y0
+    
 
 
