@@ -88,9 +88,10 @@ def heun_step(fun, t, y, h):
     return t, y
 
 
-def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01, function_args=None):
-    """Solve an ordinary differential equation.
-
+class ODE:
+    """
+    Class to solve ordinary differential equations.
+    
     Parameters
     ----------
     fun : function
@@ -109,51 +110,70 @@ def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01,
         Maximum step size.
     function_args : tuple, optional
         Additional arguments to pass to fun. 
-
-    Returns
-    -------
-    t : array
-        Array of t values.
-    y : array
-        Array of y values.
     """
     METHODS = {'Euler': euler_step, 'RK4': rk4_step, 'Heun': heun_step}
-    if method not in METHODS:
-        raise ValueError('Invalid method: {}. Method must be one of {}.'.format(method, METHODS.keys()))
-    else:
-        method = METHODS[method]
 
-    # Check that either t_max or n_max is given
-    if t_max is None and n_max is None:
-        raise ValueError('Either t_max or n_max must be given.')
+    def __init__(self, fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01, function_args=None):
+        self.fun = fun
+        self.t0 = t0
+        self.y0 = y0
+        self.t_max = t_max
+        self.n_max = n_max
+        self.method = method
+        self.deltat_max = deltat_max
+        self.function_args = function_args
 
-    # Check args
-    if function_args is not None:
-        # Wrap the fun in lambdas to pass through additional parameters.
-        try:
-            _ = [*function_args]
-        except TypeError as exp:
-            suggestion_tuple = (
-                "Supplied 'args' cannot be unpacked. Please supply `args`"
-                f" as a tuple (e.g. `args=({function_args},)`)"
-            )
-            raise TypeError(suggestion_tuple) from exp
+        # Check args
+        if self.function_args is not None:
+            # Wrap the fun in lambdas to pass through additional parameters.
+            try:
+                _ = [*self.function_args]
+            except TypeError as exp:
+                suggestion_tuple = (
+                    "Supplied 'args' cannot be unpacked. Please supply `args`"
+                    f" as a tuple (e.g. `args=({function_args},)`)"
+                )
+                raise TypeError(suggestion_tuple) from exp
 
-        fun = lambda t, x, fun=fun: fun(t, x, *function_args)
+            self.fun = lambda t, x, fun=self.fun: fun(t, x, *self.function_args)
 
-    t = t0
-    y = y0
-    t_array = [t]
-    y_array = [y]
-    step = 0
+        # Check method
+        if self.method not in self.METHODS:
+            raise ValueError('Invalid method: {}. Method must be one of {}.'.format(self.method, self.METHODS.keys()))
+        else:
+            self.method = self.METHODS[self.method]
 
-    while (t_max is None or t <= t_max) and (n_max is None or step <= n_max):
-        t, y = method(fun, t, y, deltat_max)
-        t_array.append(t)
-        y_array.append(y)
-        step += 1
+        # Check that either t_max or n_max is given
+        if self.t_max is None and self.n_max is None:
+            raise ValueError('Either t_max or n_max must be given.')
 
-    return np.array(t_array), np.array(y_array)
+
+    def solve_to(self):
+        """
+        Solve the ODE.
+
+        Returns
+        -------
+        t_array : array <float>
+            Array of t values.
+        y_array : array <float>
+            Array of y values.
+        
+        """
+        t = self.t0
+        y = self.y0
+        t_array = [t]
+        y_array = [y]
+        step = 0
+
+        while (self.t_max is None or t <= self.t_max) and (self.n_max is None or step <= self.n_max):
+            t, y = self.method(self.fun, t, y, self.deltat_max)
+            t_array.append(t)
+            y_array.append(y)
+            step += 1
+
+        return np.array(t_array), np.array(y_array)
+        
 
 
 def shooting(fun, dy_dt, t0, y0, y_step=0.01, yn=0, t_max=None, n_max=None, method='RK4', deltat_max=0.01, function_args=None):
