@@ -227,8 +227,9 @@ def shooting(fun, dy_dt, t0, y0, y_step=0.01, yn=0, t_max=None, n_max=None, meth
     v0 = y0[yn]
 
     # Periodic orbit: b = 0.15
-    t, y_ = solve_to(fun, t0, y0, t_max=t_max, method='RK4', deltat_max=deltat_max, args=(1, 0.1, 0.15))
-    deltas = dy_dt(t, y_)
+    ode = ODE(fun, t0, y0, t_max=t_max, method='RK4', deltat_max=deltat_max, function_args=(1, 0.1, 0.15))
+    t, y = ode.solve_to()
+    deltas = dy_dt(t, y)
     dy = deltas[yn]
 
     print('Initial guess: y0 = {}, dy/dt = {}'.format(y0, dy[-1]))
@@ -238,8 +239,9 @@ def shooting(fun, dy_dt, t0, y0, y_step=0.01, yn=0, t_max=None, n_max=None, meth
         # Break if y_step is too small
         v0 += y_step * dy[-1]
         y0[yn] = v0
-        t, y_ = solve_to(fun, t0, y0, t_max=t_max, method='RK4', deltat_max=deltat_max, args=(1, 0.1, 0.15))
-        deltas = dy_dt(t, y_)
+        ode = ODE(fun, t0, y0, t_max=t_max, method='RK4', deltat_max=deltat_max, function_args=(1, 0.1, 0.15))
+        t, y = ode.solve_to()
+        deltas = dy_dt(t, y)
         dy = deltas[yn]
 
         # Print progress
@@ -248,7 +250,7 @@ def shooting(fun, dy_dt, t0, y0, y_step=0.01, yn=0, t_max=None, n_max=None, meth
 
     print('Final guess: y0 = {}, dy/dt = {}'.format(y0, dy[-1]))
 
-    return t, y_, y0
+    return t, y, y0
     
 
 
