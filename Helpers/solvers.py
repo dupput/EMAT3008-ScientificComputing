@@ -175,82 +175,62 @@ class ODE:
         return np.array(t_array), np.array(y_array)
         
 
+    def shooting(self, phase_function, phase_condition, y_step=0.01, yn=0):
+        """
+        This function uses the shooting method to solve a boundary value problem. The phase condition is evaluated at the
+        end of the integration and the initial condition is adjusted until the phase condition is met.
 
-def shooting(fun, dy_dt, t0, y0, y_step=0.01, yn=0, t_max=None, n_max=None, method='RK4', deltat_max=0.01, function_args=None):
-    """Solve an ordinary differential equation.
+        The recommended phase conditions is to set the phase function as the differential and the phase condition as 0.
 
-    Parameters
-    ----------
-    fun : function
-        Function f(t, y) to integrate.
-    dy_dt : function
-        Differential equation to optimize. Must be of the form dy/dt = f(t, y).
-    t0 : float
-        Initial value of t.
-    y0 : float
-        Initial estimate of y.
-    y_step : float, optional
-        Rate of change of y. Value is a multiplier of the difference between the target and the current value.
-    yn : int, optional
-        Index value of y to vary.
-    t_max : float, optional
-        Maximum value of t.
-    n_max : int, optional
-        Maximum number of steps.
-    method : str, optional
-        Integration method. Can be 'Euler', 'RK4' or 'Heun'.
-    deltat_max : float, optional
-        Maximum step size.
-    args : tuple, optional
-        Additional arguments to pass to fun. 
+        Parameters
+        ----------
+        phase_function : function
+            Function to evaluate the phase condition. Must be of the form f(t, y).
+        phase_condition : float
+            Target value of the phase condition.
+        y_step : float, optional
+            Rate of change of y. Value is a multiplier of the difference between the target and the current value.
+        yn : int, optional
+            Index value of y to vary.
 
-    Returns
-    -------
-    t : array
-        Array of t values.
-    y : array
-        Array of y values.
-    y0 : float
-        Initial conditions
+        Returns
+        -------
+        t : array
+            Array of t values.
+        y : array
+            Array of y values.
+        """
+        # Initial guess for y0
+        t, y = self.solve_to()
 
-    """
-    # Check y_step
-    if y_step == 0:
-        raise ValueError('y_step must be non-zero.')
+        # Evaluate phase condition
+        deltas = phase_function(t, y)
+        
+        # Check if phase function is correct dimension
+        if len(deltas) != len(self.y0):
+            raise ValueError('Phase function must return an array of the same dimension as y0.')
+        else:
+            dy = deltas[yn]
+
+        # Extract initial conditions and parameter to vary
+        v0 = self.y0[yn]
+
+        # Iterate until phase condition is met
+        iter = 0
+        while np.round(dy[-1], 2) != 0:
+            # Increse v0 in the direction of dy
+            v0 += y_step * np.sign(dy[-1])
+
+            # Update y0 in object
+            self.y0[yn] = v0
+            
+            # Solve ODE
+            t, y = self.solve_to()
+            deltas = phase_function(t, y)
+            dy = deltas[yn]
+
+        print('Final guess: y0 = {}, dy/dt = {}'.format(self.y0, dy[-1]))
+
+        return t, y
     
-    # Check yn
-    dimension = len(y0)
-    if yn < 0 or yn >= dimension:
-        raise ValueError('yn must be between 0 and {}.'.format(dimension - 1))
-
-    # Set up optimization
-    v0 = y0[yn]
-
-    # Periodic orbit: b = 0.15
-    ode = ODE(fun, t0, y0, t_max=t_max, method='RK4', deltat_max=deltat_max, function_args=(1, 0.1, 0.15))
-    t, y = ode.solve_to()
-    deltas = dy_dt(t, y)
-    dy = deltas[yn]
-
-    print('Initial guess: y0 = {}, dy/dt = {}'.format(y0, dy[-1]))
-
-    iter = 0
-    while np.round(dy[-1], 2) != 0:
-        # Break if y_step is too small
-        v0 += y_step * dy[-1]
-        y0[yn] = v0
-        ode = ODE(fun, t0, y0, t_max=t_max, method='RK4', deltat_max=deltat_max, function_args=(1, 0.1, 0.15))
-        t, y = ode.solve_to()
-        deltas = dy_dt(t, y)
-        dy = deltas[yn]
-
-        # Print progress
-        if iter % 100 == 0:
-            print('y0 = {}, dy/dt = {}, v0 = {}'.format(y0, dy[-1], v0))
-
-    print('Final guess: y0 = {}, dy/dt = {}'.format(y0, dy[-1]))
-
-    return t, y, y0
-    
-
 
