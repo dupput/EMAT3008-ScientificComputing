@@ -152,7 +152,7 @@ class ODE:
             raise ValueError('Either t_max or n_max must be given.')
 
 
-    def solve_to(self, y0=None, t_max=None):
+    def solve_to(self, y0=None):
         """
         Solve the ODE.
 
@@ -165,17 +165,15 @@ class ODE:
         
         """
         t = self.t0
-
         if y0 is None:
             y = self.y0
         else:
             y = y0
-            
         t_array = [t]
         y_array = [y]
         step = 0
 
-        while (t_max is None or t <= t_max) and (self.n_max is None or step <= self.n_max):
+        while (self.t_max is None or t <= self.t_max) and (self.n_max is None or step <= self.n_max):
             t, y = self.method(self.fun, t, y, self.deltat_max)
             t_array.append(t)
             y_array.append(y)
@@ -252,6 +250,44 @@ class ODE:
         
         if sol.success:
             y0[boundary_index] = sol.x[0]
+            t, y = self.solve_to(y0)
+            return t, y
         else:
             raise ValueError('Shooting method failed to converge.')
     
+
+# Define ODE
+def fun(t, y, a=1, d=0.1, b=0.15):
+    x = y[0]
+    y = y[1]
+
+    dxdt = x*(1-x) - (a*x*y)/(d+x)
+    dydt = b*y*(1 - y/x)
+    return np.array([dxdt, dydt])
+
+ode = ODE(fun, 
+          t0=0, 
+          y0=np.array([1, 0.5]), 
+          t_max=60, 
+          method='RK4', 
+          deltat_max=0.1, 
+          function_args=(1, 0.1, 0.15),
+          printing=True)
+
+
+def phase_function(t, y, a=1, d=0.1, b=0.15):
+    x = y[:,0]
+    y = y[:,1]
+    dxdt = x*(1-x) - (a*x*y)/(d+x)
+    dydt = b*y*(1 - y/x)
+    return np.array([dxdt, dydt])
+
+phase_condition = 0
+y0 = np.array([1, 0.2])
+
+t, y = ode.shooting(phase_function, phase_condition, y0, yn=1, boundary_index=1)
+plt.plot(t, y[:,0], label='x')
+plt.plot(t, y[:,1], label='y')
+plt.legend()
+plt.show()    
+
