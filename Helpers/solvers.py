@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 def euler_step(fun, t, y, h):
     """Perform one step of the Euler method.
@@ -110,10 +111,12 @@ class ODE:
         Maximum step size.
     function_args : tuple, optional
         Additional arguments to pass to fun. 
+    printing : bool, optional
+        Whether to print the progress of the solver.
     """
     METHODS = {'Euler': euler_step, 'RK4': rk4_step, 'Heun': heun_step}
 
-    def __init__(self, fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01, function_args=None):
+    def __init__(self, fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01, function_args=None, printing=False):
         self.fun = fun
         self.t0 = t0
         self.y0 = y0
@@ -122,6 +125,7 @@ class ODE:
         self.method = method
         self.deltat_max = deltat_max
         self.function_args = function_args
+        self.printing = printing
 
         # Check args
         if self.function_args is not None:
@@ -148,7 +152,7 @@ class ODE:
             raise ValueError('Either t_max or n_max must be given.')
 
 
-    def solve_to(self):
+    def solve_to(self, y0=None, t_max=None):
         """
         Solve the ODE.
 
@@ -161,12 +165,17 @@ class ODE:
         
         """
         t = self.t0
-        y = self.y0
+
+        if y0 is None:
+            y = self.y0
+        else:
+            y = y0
+            
         t_array = [t]
         y_array = [y]
         step = 0
 
-        while (self.t_max is None or t <= self.t_max) and (self.n_max is None or step <= self.n_max):
+        while (t_max is None or t <= t_max) and (self.n_max is None or step <= self.n_max):
             t, y = self.method(self.fun, t, y, self.deltat_max)
             t_array.append(t)
             y_array.append(y)
@@ -175,7 +184,7 @@ class ODE:
         return np.array(t_array), np.array(y_array)
         
 
-    def shooting(self, phase_function, phase_condition, y_step=0.01, yn=0):
+    def shooting(self, phase_function, phase_condition, y0, yn=0, boundary_index=0):
         """
         This function uses the shooting method to solve a boundary value problem. The phase condition is evaluated at the
         end of the integration and the initial condition is adjusted until the phase condition is met.
@@ -188,10 +197,13 @@ class ODE:
             Function to evaluate the phase condition. Must be of the form f(t, y).
         phase_condition : float
             Target value of the phase condition.
-        y_step : float, optional
-            Rate of change of y. Value is a multiplier of the difference between the target and the current value.
+        y0 : float
+            Initial value of y.
         yn : int, optional
-            Index value of y to vary.
+            Variable of phase function to optimize. Default is 0.
+        boundary_index : int, optional
+            Index of the boundary condition to vary. Default is 0.
+        
 
         Returns
         -------
@@ -200,37 +212,46 @@ class ODE:
         y : array
             Array of y values.
         """
-        # Initial guess for y0
-        t, y = self.solve_to()
+        from scipy.optimize import root
+        import matplotlib.pyplot as plt
+        # # Initial guess for y0
+        # t, y = self.solve_to()
 
-        # Evaluate phase condition
-        deltas = phase_function(t, y)
+        # # Evaluate phase condition
+        # deltas = phase_function(t, y)
         
-        # Check if phase function is correct dimension
-        if len(deltas) != len(self.y0):
-            raise ValueError('Phase function must return an array of the same dimension as y0.')
-        else:
-            dy = deltas[yn]
+        # # Check if phase function is correct dimension
+        # if len(deltas) != len(y0):
+        #     raise ValueError('Phase function must return an array of the same dimension as y0.')
+        # else:
+        #     dy = deltas[yn]
 
-        # Extract initial conditions and parameter to vary
-        v0 = self.y0[yn]
+        # # Extract initial conditions and parameter to vary
+        # v0 = y0[yn]
 
-        # Iterate until phase condition is met
-        iter = 0
-        while np.round(dy[-1], 2) != 0:
-            # Increse v0 in the direction of dy
-            v0 += y_step * np.sign(dy[-1])
+        # # Iterate until phase condition is met
+        # iter = 0        
 
-            # Update y0 in object
-            self.y0[yn] = v0
-            
-            # Solve ODE
-            t, y = self.solve_to()
+        def end_condition(v0):
+            y0[yn] = v0[0]
+            print(y0)
+
+            # Initial guess for y0
+            t, y = self.solve_to(y0)
+
+            # Evaluate phase condition
             deltas = phase_function(t, y)
-            dy = deltas[yn]
 
-        print('Final guess: y0 = {}, dy/dt = {}'.format(self.y0, dy[-1]))
+            dy_end = deltas[yn][-1]
 
-        return t, y
+            return dy_end - phase_condition
+
+        v0 = y0[boundary_index]
+        print(v0)
+        sol = root(end_condition, v0, method='hybr')
+        
+        if sol.success:
+            y0[boundary_index] = sol.x[0]
+        else:
+            raise ValueError('Shooting method failed to converge.')
     
-
