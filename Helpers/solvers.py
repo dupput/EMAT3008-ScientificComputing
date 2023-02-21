@@ -1,9 +1,10 @@
+from scipy.optimize import root
 import numpy as np
 
 def euler_step(fun, t, y, h):
     """Perform one step of the Euler method.
     
-    Parameters
+    parameters
     ----------
     fun : function
         Function f(t, y) to integrate.
@@ -14,7 +15,7 @@ def euler_step(fun, t, y, h):
     h : float
         Step size.
         
-    Returns
+    returns
     -------
     t : float
         New value of t.
@@ -31,7 +32,7 @@ def euler_step(fun, t, y, h):
 def rk4_step(fun, t, y, h):
     """Perform one step of the Runge-Kutta method of order 4.
     
-    Parameters
+    parameters
     ----------
     fun : function
         Function f(t, y) to integrate.
@@ -42,7 +43,7 @@ def rk4_step(fun, t, y, h):
     h : float
         Step size.
         
-    Returns
+    returns
     -------
     t : float
         New value of t.
@@ -62,7 +63,7 @@ def rk4_step(fun, t, y, h):
 def heun_step(fun, t, y, h):
     """Perform one step of the Heun method.
     
-    Parameters
+    parameters
     ----------
     fun : function
         Function f(t, y) to integrate.
@@ -73,7 +74,7 @@ def heun_step(fun, t, y, h):
     h : float
         Step size.
         
-    Returns
+    returns
     -------
     t : float
         New value of t.
@@ -91,7 +92,7 @@ def heun_step(fun, t, y, h):
 def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01, args=None):
     """Solve an ordinary differential equation.
 
-    Parameters
+    parameters
     ----------
     fun : function
         Function f(t, y) to integrate.
@@ -110,12 +111,27 @@ def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01,
     args : tuple, optional
         Additional arguments to pass to fun. 
 
-    Returns
+    returns
     -------
     t : array
         Array of t values.
     y : array
         Array of y values.
+
+    examples
+    --------
+    >>> import numpy as np
+
+    >>> def fun(t, y):
+    ...     y_ = y[0]
+    ...     x_ = y[1]
+    ...     return np.array([x_, -y_])
+    >>> t0 = 0
+    >>> y0 = np.array([1, 0])
+    >>> t_max = 20
+    >>> deltat_max = 0.1
+
+    >>> t, y = solve_to(fun, t0, y0, t_max=t_max, method='Euler', deltat_max=deltat_max)
     """
     METHODS = {'Euler': euler_step, 'RK4': rk4_step, 'Heun': heun_step}
     if method not in METHODS:
@@ -195,10 +211,9 @@ def shooting(initial_guess, ode, phase_function):
     ...     return dx
     >>> initial_guess = [0.6, 0.8, 35]
     >>> X0, T = shooting(initial_guess, ode, phase_function)
-    >>> print(X0, T)
-    [0.8189692  0.16636172] 34.06960743834717
     '''
 
+    # Set up function to optimize
     def shooting_root(initial_guess):
         T = initial_guess[-1]
         Y0 = np.array(initial_guess[:-1])
