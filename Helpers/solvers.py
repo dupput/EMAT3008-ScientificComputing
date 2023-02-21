@@ -1,5 +1,16 @@
-from scipy.optimize import root
+from scipy.optimize import fsolve
 import numpy as np
+
+# Custom exceptions
+class InputError(Exception):
+    """Exception raised for errors in the input."""
+    pass
+
+class FunctionError(Exception):
+    """Exception raised for errors in the function."""
+    pass
+
+
 
 def euler_step(fun, t, y, h):
     """Perform one step of the Euler method.
@@ -172,31 +183,31 @@ def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01,
     return np.array(t_array), np.array(y_array)
 
 
-def shooting(initial_guess, ode, phase_function):
+def shooting(initial_guess, ode, phase_function, atol=1e-4):
     '''
     Shooting method for solving boundary value problems. 
     
     parameters
     ----------
-    initial_guess: list
+    initial_guess: array
         The initial guess should be a list of the form [y0, y1, ..., yn, T], where y0, y1, ..., yn
-        are the initial conditions for the ODE and T is the final time.
+        are the initial conditions for the ODE and T is the time period for the ODE.
     ode: function
         The ODE to be solved. The function should take the form f(t, y, *args), where t is the
         independent variable, y is the dependent variable, and *args are the parameters of the ODE.
     phase_function: function
-        The phase function for the ODE. The function should take the form f(t, y, *args), where t is the
-        independent variable, y is the dependent variable, and *args are the parameters of the ODE. The
-        phase function should return the value of the derivative of the dependent variable with respect
-        to the independent variable. Should an alternative value of 0 be desired, the value should be 
-        incorporated into the phase functions return statement.
+        The phase function for the ODE. The function should take the same inputs as the ODE. The phase
+        function is used to determine the differential at the start of the ODE and should be zero at
+        the end of the ODE.
+    atol: float, optional
+        The absolute tolerance for the ODE solver. The default value is 1e-4.
 
     returns
     -------
     X0: array
         The array of initial conditions for the ODE that satisfy the boundary conditions.
     T: float
-        The final time period for the ODE.
+        The time period for the ODE.
 
     example
     -------
@@ -212,6 +223,17 @@ def shooting(initial_guess, ode, phase_function):
     >>> initial_guess = [0.6, 0.8, 35]
     >>> X0, T = shooting(initial_guess, ode, phase_function)
     '''
+    # Check that the initial guess is of the correct form for the ODE
+    try:
+        solve_to(ode, 0, initial_guess[:-1], n_max=1)
+    except:
+        raise InputError('The initial guess is not of the correct form. The initial guess should be a list of the form [y0, y1, ..., yn, T], where y0, y1, ..., yn are the initial conditions for the ODE and T is the time period.')
+
+    try:
+        phase_function(0, initial_guess[:-1])
+    except:
+        raise FunctionError('The phase function is not of the correct form. The phase function should take the same inputs as the ODE.')
+
 
     # Set up function to optimize
     def shooting_root(initial_guess):
@@ -234,8 +256,20 @@ def shooting(initial_guess, ode, phase_function):
 
         return conditions
 
-    sol = root(shooting_root, initial_guess)
-    X0 = np.array(sol.x[:-1])
-    T = sol.x[-1]
+    sol = fsolve(shooting_root, initial_guess)
+    X0 = np.array(sol[:-1])
+    T = sol[-1]
+
+    # Check that the solution is valid
+    final_conditions = shooting_root(sol)
+    if np.allclose(final_conditions, np.zeros(len(sol)), atol=atol):
+        print('The solution satisfies the boundary conditions.')
+    else:
+        message = '''The solution does not satisfy the boundary conditions. 
+        The final conditions are: {}. 
+        The final value of X0 and T is: {}, {}. 
+        the initial guess or increasing the absolute tolerance.
+        '''.format(final_conditions, X0, T)
+        raise ValueError(message)
 
     return X0, T
