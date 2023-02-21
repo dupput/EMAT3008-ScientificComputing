@@ -88,8 +88,7 @@ def heun_step(fun, t, y, h):
     return t, y
 
 
-def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01, 
-                filename=None, args=None):
+def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01, args=None):
     """Solve an ordinary differential equation.
 
     Parameters
@@ -108,8 +107,6 @@ def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01,
         Integration method. Must be 'Euler' or 'RK4'.
     deltat_max : float, optional
         Maximum step size.
-    filename : str, optional
-        Name of file to save plot to. If None, plot is shown but not saved.
     args : tuple, optional
         Additional arguments to pass to fun. 
 
