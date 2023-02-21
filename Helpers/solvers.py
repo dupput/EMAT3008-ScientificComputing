@@ -154,3 +154,73 @@ def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01,
         step += 1
 
     return np.array(t_array), np.array(y_array)
+
+
+def shooting(initial_guess, ode, phase_function):
+    '''
+    Shooting method for solving boundary value problems. 
+    
+    parameters
+    ----------
+    initial_guess: list
+        The initial guess should be a list of the form [y0, y1, ..., yn, T], where y0, y1, ..., yn
+        are the initial conditions for the ODE and T is the final time.
+    ode: function
+        The ODE to be solved. The function should take the form f(t, y, *args), where t is the
+        independent variable, y is the dependent variable, and *args are the parameters of the ODE.
+    phase_function: function
+        The phase function for the ODE. The function should take the form f(t, y, *args), where t is the
+        independent variable, y is the dependent variable, and *args are the parameters of the ODE. The
+        phase function should return the value of the derivative of the dependent variable with respect
+        to the independent variable. Should an alternative value of 0 be desired, the value should be 
+        incorporated into the phase functions return statement.
+
+    returns
+    -------
+    X0: array
+        The array of initial conditions for the ODE that satisfy the boundary conditions.
+    T: float
+        The final time period for the ODE.
+
+    example
+    -------
+    >>> def ode(t, y, a=1, d=0.1, b=0.1):
+    ...     x = y[0]
+    ...     y = y[1]
+    ...     dxdt = x*(1-x) - (a*x*y)/(d+x)
+    ...     dydt = b*y*(1 - y/x)
+    ...     return np.array([dxdt, dydt])
+    >>> def phase_function(t, y):
+    ...     dx, dy = ode(t, y)
+    ...     return dx
+    >>> initial_guess = [0.6, 0.8, 35]
+    >>> X0, T = shooting(initial_guess, ode, phase_function)
+    >>> print(X0, T)
+    [0.8189692  0.16636172] 34.06960743834717
+    '''
+
+    def shooting_root(initial_guess):
+        T = initial_guess[-1]
+        Y0 = np.array(initial_guess[:-1])
+
+        # Solve the ODE
+        t, y = solve_to(ode, 0, Y0, t_max=T)
+
+        # Set up the conditions array
+        num_vars = len(initial_guess)
+        conditions = np.zeros(num_vars)
+        # Dynamically fill in the conditions array
+        for i in range(num_vars - 1):
+            conditions[i] = y[-1,i] - Y0[i]        # X(T) - X(0) = 0
+
+        # Final condition is the phase function
+        phase_value = phase_function(0, Y0)
+        conditions[-1] = phase_value               # dx/dt(T) = 0
+
+        return conditions
+
+    sol = root(shooting_root, initial_guess)
+    X0 = np.array(sol.x[:-1])
+    T = sol.x[-1]
+
+    return X0, T
