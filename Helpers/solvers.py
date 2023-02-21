@@ -174,16 +174,20 @@ def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01,
     y_array = [y]
     step = 0
 
-    while (t_max is None or t <= t_max) and (n_max is None or step <= n_max):
+    while (t_max is None or t < t_max) and (n_max is None or step < n_max):
         t, y = method(fun, t, y, deltat_max)
         t_array.append(t)
         y_array.append(y)
         step += 1
 
+        # Prevent overshooting t_max
+        if t_max is not None and t + deltat_max > t_max:
+            deltat_max = t_max - t
+
     return np.array(t_array), np.array(y_array)
 
 
-def shooting(initial_guess, ode, phase_function, atol=1e-4):
+def shooting(initial_guess, ode, phase_function, atol=1e-8):
     '''
     Shooting method for solving boundary value problems. 
     
@@ -260,16 +264,18 @@ def shooting(initial_guess, ode, phase_function, atol=1e-4):
     X0 = np.array(sol[:-1])
     T = sol[-1]
 
-    # Check that the solution is valid
+    # Check that the solution is valid. 
     final_conditions = shooting_root(sol)
-    if np.allclose(final_conditions, np.zeros(len(sol)), atol=atol):
-        print('The solution satisfies the boundary conditions.')
-    else:
+    if not np.allclose(final_conditions, np.zeros(len(sol)), atol=atol):
         message = '''The solution does not satisfy the boundary conditions. 
         The final conditions are: {}. 
         The final value of X0 and T is: {}, {}. 
         the initial guess or increasing the absolute tolerance.
         '''.format(final_conditions, X0, T)
         raise ValueError(message)
+    
+    if T <= 0:
+        raise ValueError('The time period is not positive. Please try a different initial guess.')
 
     return X0, T
+
