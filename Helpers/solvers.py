@@ -187,14 +187,14 @@ def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01,
     return np.array(t_array), np.array(y_array)
 
 
-def shooting(initial_guess, ode, phase_function, atol=1e-8):
+def shooting(U0, ode, phase_function, atol=1e-8):
     '''
     Shooting method for solving boundary value problems. 
     
     parameters
     ----------
-    initial_guess: array
-        The initial guess should be a list of the form [y0, y1, ..., yn, T], where y0, y1, ..., yn
+    U0: array
+        The initial guess, U0 should be a list of the form [y0, y1, ..., yn, T], where y0, y1, ..., yn
         are the initial conditions for the ODE and T is the time period for the ODE.
     ode: function
         The ODE to be solved. The function should take the form f(t, y, *args), where t is the
@@ -224,17 +224,17 @@ def shooting(initial_guess, ode, phase_function, atol=1e-8):
     >>> def phase_function(t, y):
     ...     dx, dy = ode(t, y)
     ...     return dx
-    >>> initial_guess = [0.6, 0.8, 35]
-    >>> X0, T = shooting(initial_guess, ode, phase_function)
+    >>> U0 = [0.6, 0.8, 35]
+    >>> X0, T = shooting(U0, ode, phase_function)
     '''
     # Check that the initial guess is of the correct form for the ODE
     try:
-        solve_to(ode, 0, initial_guess[:-1], n_max=1)
+        solve_to(ode, 0, U0[:-1], n_max=1)
     except:
         raise InputError('The initial guess is not of the correct form. The initial guess should be a list of the form [y0, y1, ..., yn, T], where y0, y1, ..., yn are the initial conditions for the ODE and T is the time period.')
 
     try:
-        phase_function(0, initial_guess[:-1])
+        phase_function(0, U0[:-1])
     except:
         raise FunctionError('The phase function is not of the correct form. The phase function should take the same inputs as the ODE.')
 
@@ -260,7 +260,7 @@ def shooting(initial_guess, ode, phase_function, atol=1e-8):
 
         return conditions
 
-    sol = fsolve(shooting_root, initial_guess)
+    sol = fsolve(shooting_root, U0)
     X0 = np.array(sol[:-1])
     T = sol[-1]
 
