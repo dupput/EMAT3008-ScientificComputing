@@ -151,6 +151,23 @@ class Test_solve_to(unittest.TestCase):
         with self.assertRaises(ValueError):
             solve_to(fun, t0, y0, t_max=t_max, deltat_max=deltat_max)
 
+    def test_15(self):
+        fun = lambda t, y: y
+        t0 = 0
+        y0 = np.array(1)
+        t_max = 1
+        deltat_max = 0
+        with self.assertRaises(ValueError):
+            solve_to(fun, t0, y0, t_max=t_max, deltat_max=deltat_max)
+
+    def test_16(self):
+        fun = lambda t, y: y
+        t0 = 0
+        y0 = np.array(1)
+        t_max = 1
+        deltat_max = 'Not a number'
+        with self.assertRaises(ValueError):
+            solve_to(fun, t0, y0, t_max=t_max, deltat_max=deltat_max)
 # ----------------------------------------------------------------------------- #
 
 # # Testing the function shooting

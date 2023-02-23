@@ -174,13 +174,19 @@ def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01,
     if t_max is None and n_max is None:
         raise ValueError('Either t_max or n_max must be given.')
     
-    if t_max is not None and (type(t_max) == float or type(t_max) == int):
-        if t_max <= t0:
-            raise ValueError('t_max must be greater than t0.')
-    
-    if n_max is not None and (type(n_max) == float or type(n_max) == int):
-        if n_max <= 0:
-            raise ValueError('n_max must be greater than 0.')
+    if t_max is not None:
+        if type(t_max) == float or type(t_max) == int:
+            if t_max <= t0:
+                raise ValueError('t_max must be greater than t0.')
+        else:
+            raise ValueError('t_max must be a float or int.')
+
+    if n_max is not None:
+        if type(n_max) == int:
+            if n_max <= 0:
+                raise ValueError('n_max must be greater than 0.')
+        else:
+            raise ValueError('n_max must be an int.')
 
     # args checks
     if args is not None:
@@ -197,7 +203,10 @@ def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01,
         fun = lambda t, x, fun=fun: fun(t, x, *args)
 
     # deltat_max checks
-
+    if type(deltat_max) != float and type(deltat_max) != int:
+        raise ValueError('deltat_max must be a float or int.')
+    elif deltat_max <= 0:
+        raise ValueError('deltat_max must be greater than 0.')
 
     t = t0
     y = y0
