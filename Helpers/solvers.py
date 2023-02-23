@@ -106,15 +106,15 @@ def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01,
     parameters
     ----------
     fun : function
-        Function f(t, y) to integrate.
-    t0 : float
+        Function f(t, y) to integrate. Must return a numpy array.
+    t0 : float | int
         Initial value of t.
-    y0 : float
-        Initial value of y.
+    y0 : array
+        Initial value of y. Must be a numpy array.
     t_max : float, optional
-        Maximum value of t.
+        Maximum value of t. If None, n_max must be given. Must be greater than t0.
     n_max : int, optional
-        Maximum number of steps.
+        Maximum number of steps. If None, t_max must be given. Must be greater than 0.
     method : str, optional
         Integration method. Must be 'Euler' or 'RK4'.
     deltat_max : float, optional
@@ -144,17 +144,51 @@ def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01,
 
     >>> t, y = solve_to(fun, t0, y0, t_max=t_max, method='Euler', deltat_max=deltat_max)
     """
+    # ----------------------- Error checking ----------------------- #
+    # fun checks
+    try:
+        array = fun(t0, y0)
+    except Exception as exp:
+        raise FunctionError('ODE function must be of the form f(t, y).') from exp
+    
+    # t0 checks
+    if type(t0) != float and type(t0) != int:
+        raise ValueError('Initial value t0 must be a float or int.')
+    
+    # y0 checks
+    if type(y0) != np.ndarray:
+        raise InputError('Initial value y0 must a numpy array.')
+    elif type(array) != np.ndarray:
+        raise FunctionError('ODE function must return a numpy array.')
+    elif y0.shape != array.shape:
+        raise FunctionError('ODE function must return a numpy array of the same shape as y0.')
+
+    # method checks
     METHODS = {'Euler': euler_step, 'RK4': rk4_step, 'Heun': heun_step}
     if method not in METHODS:
         raise ValueError('Invalid method: {}. Method must be one of {}.'.format(method, METHODS.keys()))
     else:
         method = METHODS[method]
 
-    # Check that either t_max or n_max is given
+    # t_max and n_max checks
     if t_max is None and n_max is None:
         raise ValueError('Either t_max or n_max must be given.')
+    
+    if t_max is not None:
+        if type(t_max) == float or type(t_max) == int:
+            if t_max <= t0:
+                raise ValueError('t_max must be greater than t0.')
+        else:
+            raise ValueError('t_max must be a float or int.')
 
-    # Check args
+    if n_max is not None:
+        if type(n_max) == int:
+            if n_max <= 0:
+                raise ValueError('n_max must be greater than 0.')
+        else:
+            raise ValueError('n_max must be an int.')
+
+    # args checks
     if args is not None:
         # Wrap the fun in lambdas to pass through additional parameters.
         try:
@@ -167,6 +201,12 @@ def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01,
             raise TypeError(suggestion_tuple) from exp
 
         fun = lambda t, x, fun=fun: fun(t, x, *args)
+
+    # deltat_max checks
+    if type(deltat_max) != float and type(deltat_max) != int:
+        raise ValueError('deltat_max must be a float or int.')
+    elif deltat_max <= 0:
+        raise ValueError('deltat_max must be greater than 0.')
 
     t = t0
     y = y0
