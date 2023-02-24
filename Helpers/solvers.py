@@ -229,7 +229,7 @@ def solve_to(fun, t0, y0, tf=None, n_max=None, method='RK4', deltat_max=0.01, ar
     return np.array(t_array), np.array(y_array)
 
 
-def shooting(U0, ode, phase_function, atol=1e-8):
+def shooting(U0, ode, phase_function, ode_solver=solve_to, root_solver=fsolve, atol=1e-8):
     '''
     Shooting method for solving boundary value problems. 
     
@@ -245,6 +245,13 @@ def shooting(U0, ode, phase_function, atol=1e-8):
         The phase function for the ODE. The function should take the same inputs as the ODE. The phase
         function is used to determine the differential at the start of the ODE and should be zero at
         the end of the ODE.
+    ode_solver: function, optional
+        The ODE solver to be used. The solver should take the form solver(ode, t0, y0, tf, *args), where
+        ode is the ODE to be solved, t0 is the initial time, y0 is the initial condition, tf is the
+        final time, and *args are the parameters of the ODE. The default value is solve_to.
+    root_solver: function, optional
+        The optimization solver to be used. The solver should take the form solver(fun, x0), where
+        fun is the function to be minimized and x0 is the initial guess.
     atol: float, optional
         The absolute tolerance for the ODE solver. The default value is 1e-4.
 
@@ -280,6 +287,8 @@ def shooting(U0, ode, phase_function, atol=1e-8):
     except:
         raise FunctionError('The phase function is not of the correct form. The phase function should take the same inputs as the ODE.')
 
+    # TODO: Checks for the ODE solver and root solver
+    # Tests
 
     # Set up function to optimize
     def shooting_root(initial_guess):
@@ -287,7 +296,7 @@ def shooting(U0, ode, phase_function, atol=1e-8):
         Y0 = np.array(initial_guess[:-1])
 
         # Solve the ODE
-        t, y = solve_to(ode, 0, Y0, tf=T)
+        t, y = ode_solver(ode, 0, Y0, tf=T)
 
         # Set up the conditions array
         num_vars = len(initial_guess)
@@ -303,7 +312,7 @@ def shooting(U0, ode, phase_function, atol=1e-8):
         return conditions
 
     # TODO: Implement a better root finding algorithm, e.g. particle swarm optimization
-    sol = fsolve(shooting_root, U0)
+    sol = root_solver(shooting_root, U0)
     X0 = np.array(sol[:-1])
     T = sol[-1]
 
