@@ -302,6 +302,7 @@ def shooting(U0, ode, phase_function, atol=1e-8):
 
         return conditions
 
+    # TODO: Implement a better root finding algorithm, e.g. particle swarm optimization
     sol = fsolve(shooting_root, U0)
     X0 = np.array(sol[:-1])
     T = sol[-1]
