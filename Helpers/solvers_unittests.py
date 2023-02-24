@@ -1,7 +1,9 @@
 import unittest   # The test framework
 import numpy as np
-
-from Helpers.solvers import solve_to, shooting, InputError, FunctionError
+try:
+    from Helpers.solvers import solve_to, shooting, InputError, FunctionError
+except:
+    from solvers import solve_to, shooting, InputError, FunctionError
 
 class Test_solve_to(unittest.TestCase):
     def __init__(self, *args, **kwargs):
@@ -249,6 +251,30 @@ class Test_shooting(unittest.TestCase):
         initial_guess = np.array([20, 0.4, 35])
         with self.assertRaises(ValueError):
             shooting(initial_guess, ode, phase_function)
+
+    def test_5(self):
+        def ODE(t, y, beta=1, sigma=-1):
+            u1 = y[0]
+            u2 = y[1]
+            du1dt = beta*u1 - u2 + sigma*u1*(u1**2 + u2**2)
+            du2dt = u1 + beta*u2 + sigma*u2*(u1**2 + u2**2)
+            return np.array([du1dt, du2dt])
+
+        def phase_function(t, y):
+            return ODE(t, y, beta=1, sigma=-1)[0]
+
+        u0 = np.array([1, 0, 7])
+        X0, T = shooting(u0, ODE, phase_function)
+        t, y = solve_to(ODE, 0, X0, tf=T*2, method='RK4')
+
+        # Analytical solution
+        u1_a = np.sqrt(1)*np.cos(t + T)
+        u2_a = np.sqrt(1)*np.sin(t + T)
+
+        assert(np.allclose(y[:, 0], u1_a))
+        assert(np.allclose(y[:, 1], u2_a))
+
+
 
 
 if __name__ == '__main__':
