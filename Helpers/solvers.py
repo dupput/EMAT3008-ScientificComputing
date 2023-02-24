@@ -100,7 +100,7 @@ def heun_step(fun, t, y, h):
     return t, y
 
 
-def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01, args=None):
+def solve_to(fun, t0, y0, tf=None, n_max=None, method='RK4', deltat_max=0.01, args=None):
     """Solve an ordinary differential equation.
 
     parameters
@@ -111,10 +111,10 @@ def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01,
         Initial value of t.
     y0 : array
         Initial value of y. Must be a numpy array.
-    t_max : float, optional
+    tf : float, optional
         Maximum value of t. If None, n_max must be given. Must be greater than t0.
     n_max : int, optional
-        Maximum number of steps. If None, t_max must be given. Must be greater than 0.
+        Maximum number of steps. If None, tf must be given. Must be greater than 0.
     method : str, optional
         Integration method. Must be 'Euler' or 'RK4'.
     deltat_max : float, optional
@@ -139,13 +139,26 @@ def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01,
     ...     return np.array([x_, -y_])
     >>> t0 = 0
     >>> y0 = np.array([1, 0])
-    >>> t_max = 20
+    >>> tf = 20
     >>> deltat_max = 0.1
 
-    >>> t, y = solve_to(fun, t0, y0, t_max=t_max, method='Euler', deltat_max=deltat_max)
+    >>> t, y = solve_to(fun, t0, y0, tf=tf, method='Euler', deltat_max=deltat_max)
     """
     # ----------------------- Error checking ----------------------- #
-    # fun checks
+    # args checks
+    if args is not None:
+        # Wrap the fun in lambdas to pass through additional parameters.
+        try:
+            _ = [*(args)]
+        except TypeError as exp:
+            suggestion_tuple = (
+                "Supplied 'args' cannot be unpacked. Please supply `args`"
+                f" as a tuple (e.g. `args=({args},)`)"
+            )
+            raise TypeError(suggestion_tuple) from exp
+
+        fun = lambda t, x, fun=fun: fun(t, x, *args)
+    
     try:
         array = fun(t0, y0)
     except Exception as exp:
@@ -161,7 +174,7 @@ def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01,
     elif type(array) != np.ndarray:
         raise FunctionError('ODE function must return a numpy array.')
     elif y0.shape != array.shape:
-        raise FunctionError('ODE function must return a numpy array of the same shape as y0.')
+        raise FunctionError('ODE function must return a numpy array of the same shape as y0. y0.shape: {}. f(t0, y0).shape: {}'.format(y0.shape, array.shape))
 
     # method checks
     METHODS = {'Euler': euler_step, 'RK4': rk4_step, 'Heun': heun_step}
@@ -170,16 +183,19 @@ def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01,
     else:
         method = METHODS[method]
 
-    # t_max and n_max checks
-    if t_max is None and n_max is None:
-        raise ValueError('Either t_max or n_max must be given.')
+    # tf and n_max checks
+    if tf is None and n_max is None:
+        raise ValueError('Either tf or n_max must be given.')
     
-    if t_max is not None:
-        if type(t_max) == float or type(t_max) == int:
-            if t_max <= t0:
-                raise ValueError('t_max must be greater than t0.')
-        else:
-            raise ValueError('t_max must be a float or int.')
+    if tf is not None:
+        try:
+            # Prove that tf is a number
+            tf + 1 / 1
+
+            if tf <= t0:
+                raise ValueError('tf must be greater than t0.')
+        except TypeError:
+            raise ValueError('tf must be a float or int. Value given: {}. Type: {}'.format(tf, type(tf)))
 
     if n_max is not None:
         if type(n_max) == int:
@@ -187,20 +203,6 @@ def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01,
                 raise ValueError('n_max must be greater than 0.')
         else:
             raise ValueError('n_max must be an int.')
-
-    # args checks
-    if args is not None:
-        # Wrap the fun in lambdas to pass through additional parameters.
-        try:
-            _ = [*(args)]
-        except TypeError as exp:
-            suggestion_tuple = (
-                "Supplied 'args' cannot be unpacked. Please supply `args`"
-                f" as a tuple (e.g. `args=({args},)`)"
-            )
-            raise TypeError(suggestion_tuple) from exp
-
-        fun = lambda t, x, fun=fun: fun(t, x, *args)
 
     # deltat_max checks
     if type(deltat_max) != float and type(deltat_max) != int:
@@ -214,15 +216,15 @@ def solve_to(fun, t0, y0, t_max=None, n_max=None, method='RK4', deltat_max=0.01,
     y_array = [y]
     step = 0
 
-    while (t_max is None or t < t_max) and (n_max is None or step < n_max):
+    while (tf is None or t < tf) and (n_max is None or step < n_max):
         t, y = method(fun, t, y, deltat_max)
         t_array.append(t)
         y_array.append(y)
         step += 1
 
-        # Prevent overshooting t_max
-        if t_max is not None and t + deltat_max > t_max:
-            deltat_max = t_max - t
+        # Prevent overshooting tf
+        if tf is not None and t + deltat_max > tf:
+            deltat_max = tf - t
 
     return np.array(t_array), np.array(y_array)
 
@@ -285,7 +287,7 @@ def shooting(U0, ode, phase_function, atol=1e-8):
         Y0 = np.array(initial_guess[:-1])
 
         # Solve the ODE
-        t, y = solve_to(ode, 0, Y0, t_max=T)
+        t, y = solve_to(ode, 0, Y0, tf=T)
 
         # Set up the conditions array
         num_vars = len(initial_guess)
