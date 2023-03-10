@@ -193,7 +193,7 @@ def solve_to(fun, t0, y0, tf=None, n_max=None, method='RK4', deltat_max=0.01, ar
             tf + 1 / 1
 
             if tf <= t0:
-                raise ValueError('tf must be greater than t0.')
+                raise ValueError('tf must be greater than t0. Values given: t0 = {}, tf = {}.'.format(t0, tf))
         except TypeError:
             raise ValueError('tf must be a float or int. Value given: {}. Type: {}'.format(tf, type(tf)))
 
@@ -229,7 +229,7 @@ def solve_to(fun, t0, y0, tf=None, n_max=None, method='RK4', deltat_max=0.01, ar
     return np.array(t_array), np.array(y_array)
 
 
-def shooting(U0, ode, phase_function, ode_solver=solve_to, root_solver=fsolve, atol=1e-8):
+def shooting(U0, ode, phase_function, ode_solver=solve_to, root_solver=fsolve, atol=1e-8, function_args=None):
     '''
     Shooting method for solving boundary value problems. 
     
@@ -254,6 +254,8 @@ def shooting(U0, ode, phase_function, ode_solver=solve_to, root_solver=fsolve, a
         fun is the function to be minimized and x0 is the initial guess.
     atol: float, optional
         The absolute tolerance for the ODE solver. The default value is 1e-4.
+    function_args: tuple, optional
+        Additional parameters to be passed to the ODE. The default value is None.
 
     returns
     -------
@@ -278,15 +280,21 @@ def shooting(U0, ode, phase_function, ode_solver=solve_to, root_solver=fsolve, a
     '''
     # Check that the initial guess is of the correct form for the ODE
     try:
-        solve_to(ode, 0, U0[:-1], n_max=1)
+        solve_to(ode, 0, U0[:-1], n_max=1, args=function_args)
     except:
-        raise InputError('The initial guess is not of the correct form. The initial guess should be a list of the form [y0, y1, ..., yn, T], where y0, y1, ..., yn are the initial conditions for the ODE and T is the time period.')
+        message = """The initial guess, U0, is not of the correct form. The initial guess should be a 
+        list of the form [y0, y1, ..., yn, T], where y0, y1, ..., yn are the initial conditions 
+        for the ODE and T is the time period. Values given: U0 = {}""".format(U0)
+        raise InputError(message)
 
     try:
-        phase_function(0, U0[:-1])
+        # TypeError: Value after * must be an iterable, not NoneType
+        phase_function(0, U0[:-1], *function_args)
     except:
-        raise FunctionError('The phase function is not of the correct form. The phase function should take the same inputs as the ODE.')
-
+        message = """The phase function is not of the correct form. The phase function should take 
+        the same inputs as the ODE. Input provided for U0 = {}""".format(U0)
+        raise FunctionError(message)
+    
     # TODO: Checks for the ODE solver and root solver
     # Tests
 
@@ -296,7 +304,7 @@ def shooting(U0, ode, phase_function, ode_solver=solve_to, root_solver=fsolve, a
         Y0 = np.array(initial_guess[:-1])
 
         # Solve the ODE
-        t, y = ode_solver(ode, 0, Y0, tf=T)
+        t, y = ode_solver(ode, 0, Y0, tf=T, args=function_args)
 
         # Set up the conditions array
         num_vars = len(initial_guess)
@@ -306,7 +314,7 @@ def shooting(U0, ode, phase_function, ode_solver=solve_to, root_solver=fsolve, a
             conditions[i] = y[-1,i] - Y0[i]        # X(T) - X(0) = 0
 
         # Final condition is the phase function
-        phase_value = phase_function(0, Y0)
+        phase_value = phase_function(0, Y0, *function_args)
         conditions[-1] = phase_value               # dx/dt(T) = 0
 
         return conditions
