@@ -1,7 +1,8 @@
 import numpy as np
+from scipy.optimize import root
 
 class BVP:
-    def __init__(self, a, b, N, alpha, beta=None, delta=None, gamma=None, condition_type=None):
+    def __init__(self, a, b, N, alpha, beta=None, delta=None, gamma=None, condition_type=None, q_fun=None, D_const=None):
         self.a = a
         self.b = b
         self.alpha = alpha
@@ -10,9 +11,14 @@ class BVP:
         self.gamma = gamma
         self.N = N
         self.condition_type = condition_type
+        self.q_fun = q_fun
+        self.D_const = D_const
 
         # Check that the boundary conditions are valid
         self.check_boundary_validity()
+
+        # Check q_fun and f_fun
+        self.check_functions()
 
         # Create the grid
         self.grid()
@@ -33,7 +39,13 @@ class BVP:
             
         else:
             raise ValueError('condition_type must be either Dirichlet or Neumann or Robin')
-            
+
+
+    def check_functions(self):
+        if self.q_fun is not None:
+            if not callable(self.q_fun):
+                raise ValueError('q_fun must be a function')
+
 
     def grid(self):
         self.x_values = np.linspace(self.a, self.b, self.N + 1)
@@ -119,5 +131,40 @@ class BVP:
         
         elif self.condition_type == 'Robin':
             return self.robin_boundary_conditions()
+        
     
+    def solve_matrices(self, A, b):
 
+        if self.condition_type == 'Dirichlet':
+            b = b + self.q_fun(self.x_values[1:-1], 0) * self.delta_x**2
+        else:
+            b = b + self.q_fun(self.x_values[1:], 0) * self.delta_x**2
+
+        self.solution = np.linalg.solve(A, -b)
+
+        if self.condition_type == 'Dirichlet':
+            self.solution = np.concatenate(([self.alpha], self.solution, [self.beta]))     
+        else:
+            self.solution = np.concatenate(([self.alpha], self.solution))
+
+        return self.solution
+    
+    
+    def solve_nonlinear(self, A, b, guess):
+
+        if self.condition_type == 'Dirichlet':
+            def func(u):
+                return self.D_const * A @ u + b + self.q_fun(self.x_values[1:-1], u) * self.delta_x**2
+        else:
+            def func(u):
+                return self.D_const * A @ u + b + self.q_fun(self.x_values[1:], u) * self.delta_x**2
+            
+        sol = root(func, guess)
+        self.solution = sol.x
+
+        if self.condition_type == 'Dirichlet':
+            self.solution = np.concatenate(([self.alpha], self.solution, [self.beta]))
+        else:
+            self.solution = np.concatenate(([self.alpha], self.solution))
+
+        return self.solution
