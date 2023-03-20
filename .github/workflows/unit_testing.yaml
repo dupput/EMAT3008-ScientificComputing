@@ -17,3 +17,5 @@ jobs:
       - name: Run unit tests
         run: |
           python -m Helpers.solvers_unittests
+          python -m Helpers.plotting_unittests
+          python -m Helpers.bvp_unittests
