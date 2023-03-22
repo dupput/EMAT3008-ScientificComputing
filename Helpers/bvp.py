@@ -337,18 +337,21 @@ class BVP:
         return self.solution
     
     
-    def solve_nonlinear(self, A, b, u_array=None, x_array=None):
+    def solve_nonlinear(self, A, b, u_array, x_array=None):
         
         if self.q_fun is None:
-            func = lambda u: self.D_const * A @ u + b
+            if x_array is None:
+                raise ValueError('x_array and u_array must be provided if q_fun is not provided')
+            else:
+                func = lambda u_array: self.D_const * A @ u_array + b
         else:
-            func = lambda u: self.D_const * A @ u + b + self.q_fun(x_array, u_array) * self.dx**2
+            func = lambda u_array: self.D_const * A @ u_array + b + self.q_fun(x_array, u_array) * self.dx**2
         
         sol = root(func, u_array)
         solution = sol.x
-
+        
         self.solution = self.concatanate(solution, type='ODE')
-        return self.solution
+        return self.solution, sol.success
     
     
 
@@ -370,9 +373,9 @@ class BVP:
         
     
     def time_discretization(self, dt, t_final):
-        C = self.D_const * dt / self.dx**2
+        self.C = self.D_const * dt / self.dx**2
 
-        if C > 0.5:
+        if self.C > 0.5:
             # Raise warning
             warnings.warn('C = D * dt / dx^2 = {} > 0.5. The solution may be unstable.'.format(C))
 
@@ -395,8 +398,8 @@ class BVP:
         y = sol.y
         t = sol.t
 
-        self.solution = self.concatanate(y, type='PDE', t=t)
-        return self.solution, t
+        solution = self.concatanate(y, type='PDE', t=t)
+        return solution, t
 
 
 if __name__ == '__main__':
