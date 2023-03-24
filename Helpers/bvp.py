@@ -275,7 +275,7 @@ class BVP:
         return A, b, x_array
     
     
-    def boundary_conditions(self):
+    def construct_matrix(self):
         """
         Function to define the matrix A and the vector b for the boundary conditions based on the condition_type.
 
@@ -307,6 +307,7 @@ class BVP:
     def solve_matrices(self, A, b, x_array=None, u_array=None):
         """
         Function to solve the linear system of equations Au = -b - q(x, u) * dx^2.
+        The function q(x, u) is defined by the user and must be linear in u.
 
         Parameters
         ----------
@@ -320,7 +321,13 @@ class BVP:
         u_array : numpy.ndarray, optional
             Array of u values corresponding to A and b. Must be consistent with A, b and x_array. 
             Must be provided if q_fun is provided. The default is None.
+
+        Returns
+        -------
+        solution : numpy.ndarray
+            Solution to the linear system of equations. solution is a vector of size x_array.
         """
+        # TODO: Add a check to make sure that A, b, x_array and u_array are consistent
 
         
         # Add the source term to the vector b
@@ -335,20 +342,32 @@ class BVP:
 
         self.solution = self.concatanate(solution, type='ODE')
         return self.solution
-    
-    
-    # def residual(u, C):
-    #     A_DD, b_DD, x_array = bvp.boundary_conditions()
-    #     res = np.dot(A_DD, u) + b_DD - C * np.exp(u)
-    #     return res
-    
-    # def jacobian(u, C):
-    #     A_DD, _, _ = bvp.boundary_conditions()
-    #     J = A_DD - C * np.diag(np.exp(u))
-    #     return J
 
 
     def solve_nonlinear(self, A, b, u_array, x_array=None):
+        """
+        Function to solve the nonlinear system of equations Au = -b - q(x, u) * dx^2.
+        The function q(x, u) is defined by the user and can be nonlinear in u.
+
+        Parameters
+        ----------
+        A : numpy.ndarray
+            Matrix A. Must be size consistent with b, x_array and u_array.
+        b : numpy.ndarray
+            Vector b. Must be consistent with A, x_array and u_array.
+        u_array : numpy.ndarray
+            Array of u values corresponding to A and b. Must be consistent with A, b and x_array.
+        x_array : numpy.ndarray, optional
+            Array of x values corresponding to A and b. Must be consistent with A, b and u_array.
+            Must be provided if q_fun is provided. The default is None.
+
+        Returns
+        -------
+        solution : numpy.ndarray
+            Solution to the nonlinear system of equations. solution is a vector of size x_array.
+        success : bool
+            Boolean indicating whether the solver was successful or not.
+        """
         
         if self.q_fun is None:
             if x_array is None:
@@ -364,9 +383,34 @@ class BVP:
         self.solution = self.concatanate(solution, type='ODE')
         return self.solution, sol.success
     
+
+    def solve_system(self, A, b, u_array, x_array=None, method='Scipy'):
+        # TODO: Create handler for different methods to pass to solve_nonlinear or solve_matrices   
+        pass
     
 
     def concatanate(self, u, type='ODE', t=None):
+        """
+        Function to concatanate the solution vector with the boundary conditions.
+
+        Parameters
+        ----------
+        u : numpy.ndarray
+            Solution vector.
+        type : str, optional
+            Type of problem. If type is 'ODE', then the singular boundary conditions are concatanated to the solution vector.
+            If type is 'PDE', then the vector of boundary conditions is concatanated to the solution vector.
+            The default is 'ODE'.
+        t : numpy.ndarray, optional
+            Array of time values. Must be provided if type is 'PDE'. The default is None.
+
+        Returns
+        -------
+        numpy.ndarray
+            Solution vector with boundary conditions concatanated.
+        """
+        # TODO: Add a check to make sure that u is consistent with type and t
+
         if self.condition_type == 'Dirichlet':
             if type == 'ODE':
                 return np.concatenate(([self.alpha], u, [self.beta]))
@@ -383,22 +427,57 @@ class BVP:
                 return np.concatenate((alpha_boundary, u), axis=0)
         
     
-    def time_discretization(self, dt, t_boundary, t_final):
-        self.C = self.D * dt / self.dx**2
+    def time_discretization(self, t_boundary, t_final, dt=None, C=None):
+        """
+        Function to discretize time from t_boundary to t_final. Either dt or C must be provided, and the other will be calculated.
 
-        if self.C > 0.5:
+        Parameters
+        ----------
+        t_boundary : float
+            Initial time.
+        t_final : float
+            Final time.
+        dt : float, optional
+            Time step. The default is None.
+        C : float, optional
+            Courant number. The default is None.
+
+        Returns
+        -------
+        t : numpy.ndarray
+            Array of time values.
+        dt : float
+            Time step.
+        C : float
+            Courant number.
+        """
+        # Work out the time step or Courant number
+        if dt is None and C is None:
+            raise InputError('Either dt or C must be provided')
+        elif dt is not None and C is not None:
+            raise InputError('Only one of dt or C must be provided')
+        elif dt is not None:
+            self.dt = dt
+            self.C = self.D * dt / self.dx**2
+        elif C is not None:
+            self.C = C
+            self.dt = self.D * self.dx**2 / C
+        C = self.C
+        dt = self.dt
+
+        if C > 0.5:
             # Raise warning
-            warnings.warn('C = D * dt / dx^2 = {} > 0.5. The solution may be unstable.'.format(self.C))
+            warnings.warn('C = D * dt / dx^2 = {} > 0.5. The solution may be unstable.'.format(C))
         
         N_time = ceil((t_final - t_boundary) / dt)
         t = dt * np.arange(N_time + 1) + t_boundary
-        return t
+        return t, dt, C
 
     
 
     def solve_PDE(self, t, t_boundary):
         # t = self.time_discretization(dt, t_boundary, t_final)
-        A, b, x_array = self.boundary_conditions()
+        A, b, x_array = self.construct_matrix()
         
         u_boundary = self.f_fun(x_array, t_boundary)  
 
@@ -412,6 +491,27 @@ class BVP:
 
         solution = self.concatanate(y, type='PDE', t=t)
         return solution, t
+    
+
+    def explicit_euler(self, t):
+
+        u = np.zeros((len(self.x_values), len(t)))
+        u[:, 0] = self.f_fun(self.x_values, t[-1])
+        u[0, :] = self.alpha
+        u[-1, :] = self.beta
+
+        # Loop over time
+        for ti in range(0, len(t)-1):
+            for xi in range(0, self.N):
+                if xi == 0:
+                    # u[0, ti+1] = u[0, ti] + self.C * (self.alpha - 2 * u[0, ti] + u[1, ti])
+                    u[xi, ti+1] = self.alpha
+                elif xi > 0 and xi < self.N:
+                    u[xi, ti+1] = u[xi, ti] + self.C * (u[xi-1, ti] - 2 * u[xi, ti] + u[xi+1, ti])
+                else:
+                    u[xi, ti+1] = u[xi, ti] + self.C * (self.beta - 2 * u[xi, ti] + u[xi-1, ti])
+
+        return u, t
 
 
 if __name__ == '__main__':
@@ -419,12 +519,60 @@ if __name__ == '__main__':
     b = 1
     alpha = 0
     beta = 0
-    N = 100
+    f_fun = lambda x, t: np.sin(np.pi * (x - a) / (b - a))
     D = 0.1
+    N = 100
 
-    def func(x, t):
-        return np.sin(np.pi * x)
+    bvp = BVP(a, b, N, alpha, beta, condition_type='Dirichlet', f_fun=f_fun, D=D)
+    analytic_sol = lambda x, t: np.exp(-D * np.pi**2 * t / (b-a)**2) * np.sin(np.pi * (x - a) / (b - a))
+
+    t_boundary = 0
+    dt = 0.0001
+    t_final = 1
+
+    t, dt, C = bvp.time_discretization(t_boundary, t_final, dt=dt)
+    u, t = bvp.explicit_euler(t)
+
+    # Check against fixed t
+    idx = [1000, 2000, 3000]
+    t_checks = t[idx]
+    print(t_checks)
+
+    import plotly.graph_objects as go
+    fig = go.Figure()
+    for t_check in t_checks:
+        idx = np.where(t == t_check)[0][0]
+        fig.add_trace(go.Scatter(x=bvp.x_values, y=u[:, idx], name=f't = {t_check}'))
+        fig.add_trace(go.Scatter(x=bvp.x_values, y=analytic_sol(bvp.x_values, t_check), name=f'Analytic t = {t_check}', mode='lines', line=dict(dash='dash')))
+
+    fig.show()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    # a = 0
+    # b = 1
+    # alpha = 0
+    # beta = 0
+    # N = 100
+    # D = 0.1
+
+    # def func(x, t):
+    #     return np.sin(np.pi * x)
     
-    bvp = BVP(a, b, N, alpha, beta, D=D, condition_type='Dirichlet', f_fun=func)
+    # bvp = BVP(a, b, N, alpha, beta, D=D, condition_type='Dirichlet', f_fun=func)
 
-    y, t = bvp.solve_PDE(t_boundary=0, t_final=2, C=0.45)   
+    # y, t = bvp.solve_PDE(t_boundary=0, t_final=2, C=0.45)   
