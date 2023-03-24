@@ -47,7 +47,7 @@ class BVP:
         Constant coefficient in the differential equation. Default value is None.
     """
     def __init__(self, a, b, N, alpha, beta=None, delta=None, gamma=None, condition_type=None, 
-                 q_fun=None, f_fun=None, D_const=None):
+                 q_fun=None, f_fun=None, D=None):
         self.a = a
         self.b = b
         self.alpha = alpha
@@ -58,7 +58,7 @@ class BVP:
         self.condition_type = condition_type
         self.q_fun = q_fun
         self.f_fun = f_fun
-        self.D_const = D_const
+        self.D = D
 
         # Check that the boundary conditions are valid
         self.check_boundary_validity()
@@ -337,15 +337,26 @@ class BVP:
         return self.solution
     
     
+    # def residual(u, C):
+    #     A_DD, b_DD, x_array = bvp.boundary_conditions()
+    #     res = np.dot(A_DD, u) + b_DD - C * np.exp(u)
+    #     return res
+    
+    # def jacobian(u, C):
+    #     A_DD, _, _ = bvp.boundary_conditions()
+    #     J = A_DD - C * np.diag(np.exp(u))
+    #     return J
+
+
     def solve_nonlinear(self, A, b, u_array, x_array=None):
         
         if self.q_fun is None:
             if x_array is None:
                 raise ValueError('x_array and u_array must be provided if q_fun is not provided')
             else:
-                func = lambda u_array: self.D_const * A @ u_array + b
+                func = lambda u_array: self.D * A @ u_array + b
         else:
-            func = lambda u_array: self.D_const * A @ u_array + b + self.q_fun(x_array, u_array) * self.dx**2
+            func = lambda u_array: self.D * A @ u_array + b + self.q_fun(x_array, u_array) * self.dx**2
         
         sol = root(func, u_array)
         solution = sol.x
@@ -372,20 +383,21 @@ class BVP:
                 return np.concatenate((alpha_boundary, u), axis=0)
         
     
-    def time_discretization(self, dt, t_final):
-        self.C = self.D_const * dt / self.dx**2
+    def time_discretization(self, dt, t_boundary, t_final):
+        self.C = self.D * dt / self.dx**2
 
         if self.C > 0.5:
             # Raise warning
-            warnings.warn('C = D * dt / dx^2 = {} > 0.5. The solution may be unstable.'.format(C))
-
-        N_time = ceil(t_final / dt)
-        t = dt * np.arange(N_time + 1)
+            warnings.warn('C = D * dt / dx^2 = {} > 0.5. The solution may be unstable.'.format(self.C))
+        
+        N_time = ceil((t_final - t_boundary) / dt)
+        t = dt * np.arange(N_time + 1) + t_boundary
         return t
+
     
 
-    def solve_PDE(self, t_boundary, dt, t_final):
-        t = self.time_discretization(dt, t_final)
+    def solve_PDE(self, t, t_boundary):
+        # t = self.time_discretization(dt, t_boundary, t_final)
         A, b, x_array = self.boundary_conditions()
         
         u_boundary = self.f_fun(x_array, t_boundary)  
@@ -393,7 +405,7 @@ class BVP:
         def PDE(t, u, D, A, b):
             return D / self.dx ** 2 * (A @ u + b)
         
-        sol = solve_ivp(PDE, (t[0], t[-1]), u_boundary, method='RK45', t_eval=t, args=(self.D_const, A, b))
+        sol = solve_ivp(PDE, (t[0], t[-1]), u_boundary, method='RK45', t_eval=t, args=(self.D, A, b))
 
         y = sol.y
         t = sol.t
@@ -413,6 +425,6 @@ if __name__ == '__main__':
     def func(x, t):
         return np.sin(np.pi * x)
     
-    bvp = BVP(a, b, N, alpha, beta, D_const=D, condition_type='Dirichlet', f_fun=func)
+    bvp = BVP(a, b, N, alpha, beta, D=D, condition_type='Dirichlet', f_fun=func)
 
     y, t = bvp.solve_PDE(t_boundary=0, t_final=2, C=0.45)   
