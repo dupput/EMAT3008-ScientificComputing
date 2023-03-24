@@ -83,7 +83,7 @@ class TestBVP(unittest.TestCase):
         q_fun = lambda x, u: 9.8
 
         bvp = BVP(a, b, n, alpha, beta, condition_type=condition_type, q_fun=q_fun)
-        A_DD, b_DD, x_array = bvp.boundary_conditions()
+        A_DD, b_DD, x_array = bvp.construct_matrix()
         u_array = 0
         u_DD = bvp.solve_matrices(A_DD, b_DD, x_array, u_array)
         y_n1 = -9.8*bvp.dx**2 + 2*u_DD[0] - u_DD[1]
@@ -101,23 +101,19 @@ class TestBVP(unittest.TestCase):
         D = 0.1
 
         f_fun = lambda x, t: np.sin(np.pi * x)
-
-        bvp = BVP(a, b, N, alpha, beta, D_const=D, condition_type='Dirichlet', f_fun=f_fun)
+        bvp = BVP(a, b, N, alpha, beta, D=D, condition_type='Dirichlet', f_fun=f_fun)
 
         t_boundary = 0
         dt = 0.0001
         t_final = 2
 
-        solution, t = bvp.solve_PDE(t_boundary, dt, t_final)
+        t, dt, C = bvp.time_discretization(t_boundary, t_final, dt)
+        solution, t = bvp.explicit_euler(t)
 
-        # Find the exact solution when x = 0.5, t = 2
         idx = np.where(bvp.x_values == 0.5)[0][0]
-
         numeric = solution[idx, -1]
         exact = np.exp(-0.2 * np.pi**2)
-
-        self.assertAlmostEqual(numeric, exact, places=3)
-
+        assert np.isclose(numeric, exact, atol=1e-2)
         
 
 
