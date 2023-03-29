@@ -461,7 +461,7 @@ class BVP:
             self.C = self.D * dt / self.dx**2
         elif C is not None:
             self.C = C
-            self.dt = self.D * self.dx**2 / C
+            self.dt = C * self.dx**2 / self.D
         C = self.C
         dt = self.dt
 
@@ -475,8 +475,24 @@ class BVP:
 
     
 
-    def solve_PDE(self, t, t_boundary):
-        # t = self.time_discretization(dt, t_boundary, t_final)
+    def scipy_solver(self, t, t_boundary):
+        """
+        Function to solve the PDE using Scipy's solve_ivp.
+
+        Parameters
+        ----------
+        t : numpy.ndarray
+            Array of time values.
+        t_boundary : float
+            Initial time.
+
+        Returns
+        -------
+        solution : numpy.ndarray
+            Solution to the PDE.
+        t : numpy.ndarray
+            Array of time values.
+        """
         A, b, x_array = self.construct_matrix()
         
         u_boundary = self.f_fun(x_array, t_boundary)  
@@ -494,9 +510,23 @@ class BVP:
     
 
     def explicit_euler(self, t):
+        """
+        Function to solve the PDE using the explicit Euler method.
 
+        Parameters
+        ----------
+        t : numpy.ndarray
+            Array of time values.
+
+        Returns
+        -------
+        solution : numpy.ndarray
+            Solution to the PDE.
+        t : numpy.ndarray
+            Array of time values.
+        """
         u = np.zeros((len(self.x_values), len(t)))
-        u[:, 0] = self.f_fun(self.x_values, t[-1])
+        u[:, 0] = self.f_fun(self.x_values, t[0])
         u[0, :] = self.alpha
         u[-1, :] = self.beta
 
@@ -512,6 +542,39 @@ class BVP:
                     u[xi, ti+1] = u[xi, ti] + self.C * (self.beta - 2 * u[xi, ti] + u[xi-1, ti])
 
         return u, t
+    
+
+    def implicit_euler(self, t):
+        """
+        Function to solve the PDE using the implicit Euler method.
+
+        Parameters
+        ----------
+        t : numpy.ndarray
+            Array of time values.
+
+        Returns
+        -------
+        solution : numpy.ndarray
+            Solution to the PDE.
+        t : numpy.ndarray
+        """
+        A, b, x_array = self.construct_matrix()
+
+        I = np.eye(N-1)
+
+        lhs = I - C * A
+        rhs = C * b
+
+        u = np.zeros((len(x_array), len(t)))
+        u[:, 0] = f_fun(x_array, t[0])
+
+        for ti in range(0, len(t)-1):
+            u[:, ti+1] = np.linalg.solve(lhs, u[:, ti] + rhs)
+
+        return u, t
+
+
 
 
 if __name__ == '__main__':

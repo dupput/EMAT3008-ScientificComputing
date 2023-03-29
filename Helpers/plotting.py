@@ -1,4 +1,7 @@
 import matplotlib.pyplot as plt
+from matplotlib import animation
+import plotly.graph_objects as go
+from math import ceil
 import numpy as np
 
 def plot_phase_plane_2D(t, y):
@@ -45,3 +48,56 @@ def plot_phase_plane_2D(t, y):
 
     plt.show()
 
+
+def animate_PDE(bvp, u, t):
+    print('Animating...')
+    fig = plt.figure()
+    ax = plt.axes(xlim=(bvp.a, bvp.b), ylim=(-1.5, 1.5))
+    line, = ax.plot([], [], lw=2)
+
+    def init():
+        line.set_data([], [])
+        return line,
+
+    def animate(i):
+        x = bvp.x_values
+        y = u[:, i]
+        line.set_data(x, y)
+        return line,
+
+    anim = animation.FuncAnimation(fig, animate, init_func=init,
+                                    frames=len(t), interval=20, blit=True)
+
+    # plt.show()
+    return anim
+
+
+def plot_PDE_fixed_time(x, u, t, analytic_sol):
+    """
+    plot PDE solution at fixed times
+
+    Parameters
+    ----------
+    x : array
+        x values.
+    u : array
+        Solution array. Must have shape (len(x), len(t)).
+    t : array
+        Time array.
+
+    Returns
+    -------
+    None
+
+    """
+
+    idx = [i*ceil(len(t)/5) for i in range(5)]
+    t_checks = t[idx]
+
+    fig = go.Figure()
+    for t_check in t_checks:
+        idx = np.where(t == t_check)[0][0]
+        fig.add_trace(go.Scatter(x=x, y=u[:, idx], name=f't = {t_check}'))
+        fig.add_trace(go.Scatter(x=x, y=analytic_sol(x, t_check), name=f'Analytic t = {t_check}', mode='lines', line=dict(dash='dash')))
+
+    fig.show()
