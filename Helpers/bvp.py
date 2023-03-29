@@ -475,7 +475,7 @@ class BVP:
 
     
 
-    def scipy_solver(self, t, t_boundary):
+    def scipy_solver(self, t):
         """
         Function to solve the PDE using Scipy's solve_ivp.
 
@@ -488,14 +488,12 @@ class BVP:
 
         Returns
         -------
-        solution : numpy.ndarray
+        u : numpy.ndarray
             Solution to the PDE.
-        t : numpy.ndarray
-            Array of time values.
         """
         A, b, x_array = self.construct_matrix()
         
-        u_boundary = self.f_fun(x_array, t_boundary)  
+        u_boundary = self.f_fun(x_array, t[0])  
 
         def PDE(t, u, D, A, b):
             return D / self.dx ** 2 * (A @ u + b)
@@ -505,8 +503,8 @@ class BVP:
         y = sol.y
         t = sol.t
 
-        solution = self.concatanate(y, type='PDE', t=t)
-        return solution, t
+        u = self.concatanate(y, type='PDE', t=t)
+        return u
     
 
     def explicit_euler(self, t):
@@ -522,8 +520,6 @@ class BVP:
         -------
         solution : numpy.ndarray
             Solution to the PDE.
-        t : numpy.ndarray
-            Array of time values.
         """
         u = np.zeros((len(self.x_values), len(t)))
         u[:, 0] = self.f_fun(self.x_values, t[0])
@@ -541,7 +537,7 @@ class BVP:
                 else:
                     u[xi, ti+1] = u[xi, ti] + self.C * (self.beta - 2 * u[xi, ti] + u[xi-1, ti])
 
-        return u, t
+        return u
     
 
     def implicit_euler(self, t):
@@ -557,58 +553,83 @@ class BVP:
         -------
         solution : numpy.ndarray
             Solution to the PDE.
-        t : numpy.ndarray
         """
         A, b, x_array = self.construct_matrix()
 
-        I = np.eye(N-1)
+        I = np.eye(self.N-1)
 
-        lhs = I - C * A
-        rhs = C * b
+        lhs = I - self.C * A
+        rhs = self.C * b
 
         u = np.zeros((len(x_array), len(t)))
-        u[:, 0] = f_fun(x_array, t[0])
+        u[:, 0] = self.f_fun(x_array, t[0])
 
         for ti in range(0, len(t)-1):
             u[:, ti+1] = np.linalg.solve(lhs, u[:, ti] + rhs)
 
-        return u, t
+        return u
+    
+
+    def crank_nicolson(self, t):
+        """
+        Function to solve the PDE using the Crank-Nicolson method.
+
+        Parameters
+        ----------
+        t : numpy.ndarray
+            Array of time values.
+
+        Returns
+        -------
+        solution : numpy.ndarray
+            Solution to the PDE.
+        """
+        A, b, x_array = self.construct_matrix()
+
+        I = np.eye(self.N-1)
+
+        lhs = I - self.C * A / 2
+        rhs = I + self.C * A / 2
+
+        u = np.zeros((len(x_array), len(t)))
+        u[:, 0] = self.f_fun(x_array, t[0])
+
+        for ti in range(0, len(t)-1):
+            u[:, ti+1] = np.linalg.solve(lhs, rhs @ u[:, ti] + self.C * b)
+
+        return u
 
 
 
 
 if __name__ == '__main__':
+    # Implicit Euler method
     a = 0
     b = 1
     alpha = 0
     beta = 0
-    f_fun = lambda x, t: np.sin(np.pi * (x - a) / (b - a))
-    D = 0.1
     N = 100
+    D = 0.1
 
-    bvp = BVP(a, b, N, alpha, beta, condition_type='Dirichlet', f_fun=f_fun, D=D)
-    analytic_sol = lambda x, t: np.exp(-D * np.pi**2 * t / (b-a)**2) * np.sin(np.pi * (x - a) / (b - a))
+    f_fun = lambda x, t: np.sin(np.pi * x)
+
+    bvp = BVP(a, b, N, alpha, beta, D=D, condition_type='Dirichlet', f_fun=f_fun)
 
     t_boundary = 0
-    dt = 0.0001
-    t_final = 1
+    dt = 0.0005
+    t_final = 2
 
-    t, dt, C = bvp.time_discretization(t_boundary, t_final, dt=dt)
-    u, t = bvp.explicit_euler(t)
+    t, dt, C = bvp.time_discretization(t_boundary, t_final, dt)
 
-    # Check against fixed t
-    idx = [1000, 2000, 3000]
-    t_checks = t[idx]
-    print(t_checks)
+    solution = bvp.implicit_euler(t)
 
-    import plotly.graph_objects as go
-    fig = go.Figure()
-    for t_check in t_checks:
-        idx = np.where(t == t_check)[0][0]
-        fig.add_trace(go.Scatter(x=bvp.x_values, y=u[:, idx], name=f't = {t_check}'))
-        fig.add_trace(go.Scatter(x=bvp.x_values, y=analytic_sol(bvp.x_values, t_check), name=f'Analytic t = {t_check}', mode='lines', line=dict(dash='dash')))
+    idx = np.where(bvp.x_values == 0.5)[0][0]
+    print('x: ', bvp.x_values[idx], 't: ', t[-1])
+    numeric_implicit = solution[idx, -1]
 
-    fig.show()
+    print('Numeric solution: ', numeric_implicit)
+    print('Exact solution: ', exact)
+    print('Close: ', np.isclose(numeric_implicit, exact, rtol=1e-3))
 
 
 
