@@ -84,9 +84,9 @@ class TestBVP(unittest.TestCase):
         q_fun = lambda x, u: 9.8
 
         bvp = BVP(a, b, n, alpha, beta, condition_type=condition_type, q_fun=q_fun)
-        A_DD, b_DD, x_array = bvp.construct_matrix()
-        u_array = 0
-        u_DD = bvp.solve_matrices(A_DD, b_DD, x_array, u_array)
+        
+        u_DD, success = bvp.solve_bvp()
+        
         y_n1 = -9.8*bvp.dx**2 + 2*u_DD[0] - u_DD[1]
         
         velocity = (u_DD[1] - y_n1) / (2*bvp.dx)
