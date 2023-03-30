@@ -384,8 +384,8 @@ class BVP:
         return self.solution, sol.success
     
 
-    def solve_system(self, A, b, u_array, x_array=None, method='Scipy'):
-        # TODO: Create handler for different methods to pass to solve_nonlinear or solve_matrices   
+    def solve_bvp(self, A, b, u_array, x_array=None, method='Scipy'):
+        # TODO: Create handler for different methods to pass to solve_nonlinear or solve_matrices
         pass
     
 
@@ -493,11 +493,15 @@ class BVP:
         """
         A, b, x_array = self.construct_matrix()
         
-        u_boundary = self.f_fun(x_array, t[0])  
+        u_boundary = self.f_fun(x_array, t[0])
 
-        def PDE(t, u, D, A, b):
-            return D / self.dx ** 2 * (A @ u + b)
-        
+        if self.q_fun is None:
+            def PDE(t, u, D, A, b):
+                return D / self.dx ** 2 * (A @ u + b)
+        else:
+            def PDE(t, u, D, A, b):
+                return D / self.dx ** 2 * (A @ u + b) + self.q_fun(x_array, u)  
+
         sol = solve_ivp(PDE, (t[0], t[-1]), u_boundary, method='RK45', t_eval=t, args=(self.D, A, b))
 
         y = sol.y
@@ -603,33 +607,25 @@ class BVP:
 
 
 if __name__ == '__main__':
-    # Implicit Euler method
     a = 0
     b = 1
     alpha = 0
     beta = 0
-    N = 100
+    f_fun = lambda x, t: np.sin(np.pi * (x - a) / (b - a))
     D = 0.1
+    N = 100
 
-    f_fun = lambda x, t: np.sin(np.pi * x)
 
     bvp = BVP(a, b, N, alpha, beta, D=D, condition_type='Dirichlet', f_fun=f_fun)
 
     t_boundary = 0
-    dt = 0.0005
+    C = 0.5
     t_final = 2
 
-    t, dt, C = bvp.time_discretization(t_boundary, t_final, dt)
+    t, dt, C = bvp.time_discretization(t_boundary, t_final, C=C)
 
-    solution = bvp.implicit_euler(t)
-
-    idx = np.where(bvp.x_values == 0.5)[0][0]
-    print('x: ', bvp.x_values[idx], 't: ', t[-1])
-    numeric_implicit = solution[idx, -1]
-
-    print('Numeric solution: ', numeric_implicit)
-    print('Exact solution: ', exact)
-    print('Close: ', np.isclose(numeric_implicit, exact, rtol=1e-3))
+    u = bvp.explicit_euler(t)
+    print(u.shape)
 
 
 
