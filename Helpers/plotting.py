@@ -1,8 +1,11 @@
 import matplotlib.pyplot as plt
 from matplotlib import animation
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from math import ceil
 import numpy as np
+import time
+from Helpers.solvers import solve_to
 
 def plot_phase_plane_2D(t, y):
     """
@@ -135,3 +138,165 @@ def plot_PDE_fixed_time(x, u, t, analytic_sol):
 
     fig.show()
 
+
+def run_comparison_diagnostics(ode, ode_analytical, t0, y0, tf, deltas, methods):
+    """
+    Compare the accuracy and computation time of different methods for solving
+    an ODE. Displays a plot of the error and computation time for each method
+    for each step size as well as printing some statistics.
+
+    Parameters
+    ----------
+    ode : function
+        The ODE function.
+    fun_analytical : function
+        The analytical solution to the ODE.
+    t0 : float
+        The initial time.
+    y0 : array
+        The initial conditions.
+    tf : float
+        The final time.
+    deltas : array
+        The step sizes to use.
+    methods : array
+        The methods to use.
+
+    Returns
+    -------
+    None.
+    
+    """
+    # Create subplots in matplotlib
+    # fig = make_subplots(rows=1, cols=2, subplot_titles=('Error', 'Computation time'))
+    fig, ax = plt.subplots(1, 2, figsize=(10, 3))
+
+    errors = {
+        'Euler': [],
+        'RK4': [],
+        'Heun': []
+    }
+
+    computation_times = {
+        'Euler': [],
+        'RK4': [],
+        'Heun': []
+    }
+
+    colors = {
+        'Euler': 'blue',
+        'RK4': 'red',
+        'Heun': 'green'
+    }
+
+    for method in methods:
+        for delta in deltas:
+            start = time.time()
+            t_array, y_array = solve_to(ode, t0, y0, tf, deltat_max=delta, method=method)
+            end = time.time()
+            error = np.abs(y_array[-1] - ode_analytical(tf))
+            computation_time = end - start
+            errors[method].append(error[0])
+            computation_times[method].append(computation_time)
+
+        # Plot lines and markers
+        ax[0].loglog(deltas, errors[method],'-o', label=method, color=colors[method])
+        ax[0].set_xlabel('Step size')
+        ax[0].set_ylabel('Error')
+        ax[0].legend()
+
+        ax[1].loglog(deltas, computation_times[method] ,'-o', label=method, color=colors[method])
+        ax[1].set_xlabel('Step size')
+        ax[1].set_ylabel('Computation time')
+        ax[1].legend()
+    
+    plt.show()
+
+    # Find the timestep that gives the same error between the Euler, RK4 and Heun methods
+    baseline = 0.1
+    rk4_dt_mag = int(np.log10(baseline))
+    t_, y_ = solve_to(ode, t0, y0, tf=tf, method='RK4', deltat_max=baseline)
+    error = np.abs(y_[-1] - ode_analytical(tf))
+    error_mag = int(np.log10(error))
+
+    euler_mag = 10
+    while euler_mag >= error_mag:
+        baseline /= 10
+        t_, y_ = solve_to(ode, t0, y0, tf=tf, method='Euler', deltat_max=baseline)
+        euler_error = np.abs(y_[-1] - ode_analytical(tf))
+        euler_mag = int(np.log10(euler_error))
+        if euler_mag == error_mag:
+            euler_dt = baseline
+            break
+
+    euler_dt_mag = int(np.log10(euler_dt))
+
+    baseline = 0.1
+    heun_mag = 10
+    while heun_mag >= error_mag:
+        baseline /= 10
+        t_, y_ = solve_to(ode, t0, y0, tf=tf, method='Heun', deltat_max=baseline)
+        heun_error = np.abs(y_[-1] - ode_analytical(tf))
+        heun_mag = int(np.log10(heun_error))
+
+    heun_dt_mag = int(np.log10(baseline))
+    
+    print('_________________________________________________________________________')
+    print('Comparison of computation times and errors for a fixed step size ({}):'.format(deltas[3]))
+    print('Method:| Computation time (mag):| Error (mag):')
+    print('-------|------------------------|-------------')
+    for method in methods:
+        Error_mag = np.log10(errors[method][3])
+        computation_time_mag = np.log10(computation_times[method][3])
+        print('{:6} |{:24.2f}|{:12.2f}'.format(method, computation_time_mag, Error_mag))
+
+    print('_________________________________________________________________________')
+    print('Comparison of step size required to achieve a fixed magnitude error ({}):'.format(error_mag))
+    print('Method:| Step size (mag):')
+    print('-------|-----------------')
+    print('{:6} |{:17.2f}'.format('Euler', euler_dt_mag))
+    print('{:6} |{:17.2f}'.format('RK4', rk4_dt_mag))
+    print('{:6} |{:17.2f}'.format('Heun', heun_dt_mag))    
+
+    fig.show()
+
+
+def visualise_rk4_vs_euler(t_rk4, y_rk4, t_euler, y_euler, y_a):
+    """
+    Visualise the results of the RK4 and Euler methods. Plots the solution
+    against time and the solution against its derivative.
+
+    Parameters
+    ----------
+    t_rk4 : array
+        The time array for the RK4 method.
+    y_rk4 : array
+        The solution array for the RK4 method.
+    t_euler : array
+        The time array for the Euler method.
+    y_euler : array
+        The solution array for the Euler method.
+    y_a : array
+        The analytical solution.
+
+    Returns
+    -------
+    None.
+
+    """
+    # Create subplots
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+
+    # Plot results: y vs t
+    ax1.plot(t_rk4, y_rk4[:, 0], label='RK4', linewidth=3)
+    ax1.plot(t_rk4, y_a, '--', label='Analytical', linewidth=3)
+    ax1.plot(t_euler, y_euler[:, 0], label='Euler', linewidth=3)
+    ax1.set(xlabel='t', ylabel='y')
+    ax1.legend()
+
+    # # Plot results: y vs y'
+    ax2.plot(y_euler[:, 0], y_euler[:, 1], label='Euler', linewidth=3)
+    ax2.plot(y_rk4[:, 0], y_rk4[:, 1], label='RK4', linewidth=3)
+    ax2.set(xlabel='y', ylabel='dy/dt')
+    ax2.legend()
+    plt.show()
