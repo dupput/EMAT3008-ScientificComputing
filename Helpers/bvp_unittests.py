@@ -1,8 +1,9 @@
 import unittest
 import numpy as np
-
-from Helpers.bvp import BVP, InputError
-
+try:
+    from Helpers.bvp import BVP, InputError
+except:
+    from bvp import BVP, InputError
 class TestBVP(unittest.TestCase):
     def test_boundary_conditions_Dirichlet(self):
         a = 0
@@ -164,6 +165,25 @@ class TestBVP(unittest.TestCase):
         numeric = solution[idx, -1]
         
         assert np.isclose(numeric, exact, atol=1e-2)
+
+    def test_solve_bvp_1(self):
+        a = 0
+        b = 1
+        N = 10
+        alpha = 0
+        beta = 0
+        condition_type = 'Dirichlet'
+        q_fun = lambda x, u: 1
+        bvp = BVP(a, b, N, alpha, beta, condition_type=condition_type, q_fun=q_fun)
+        u_tridiag, success = bvp.solve_bvp(method='tridiagonal')
+        u_linear, success = bvp.solve_bvp(method='linear')
+        u_nonlinear, success = bvp.solve_bvp(method='nonlinear')
+        def u_analytic(x):
+            return -1/2 * (x - a) * (x - b) + ((beta - alpha) / (b - a)) * (x - a) + alpha
+        x_values = bvp.x_values
+        u_analytic = u_analytic(x_values)
+        # Assert that the solutions are the same
+        assert np.allclose(u_tridiag, u_linear, u_nonlinear, u_analytic)
         
 
 
