@@ -300,3 +300,35 @@ def visualise_rk4_vs_euler(t_rk4, y_rk4, t_euler, y_euler, y_a):
     ax2.set(xlabel='y', ylabel='dy/dt')
     ax2.legend()
     plt.show()
+
+
+def plot_time_series(timeSeries, b_args):
+    """
+    Plot the time series for each b value. Plots x(t) and y(t) on the left and y(t) vs x(t) on the right.
+
+    Parameters
+    ----------
+    timeSeries : list
+        A list of tuples containing the time and solution arrays for each b value.
+    b_args : list
+        A list of b values.
+
+    Returns
+    -------
+    None.
+    """
+    # Plot results: subplot for each b. Left: x(t), y(t), width: 0.75. Right: dy/dx, width: 0.25
+    fig, axs = plt.subplots(len(b_args), 2, gridspec_kw={'width_ratios': [5, 1]}, figsize=(12, 8))
+
+    for i, b in enumerate(b_args):
+        # Plot x(t), y(t) on the left. Plot dy/dx on the right.
+        axs[i, 0].plot(timeSeries[i][0], timeSeries[i][1][:, 0], label='b = {} \nx(t)'.format(b))
+        axs[i, 0].plot(timeSeries[i][0], timeSeries[i][1][:, 1], label='y(t)')
+        axs[i, 0].set_xlabel('t')
+        axs[i, 0].set_ylabel('b = {}'.format(b))
+
+        axs[i, 1].plot(timeSeries[i][1][:, 0], timeSeries[i][1][:, 1], label='b = {} \ndy/dx'.format(b))
+        axs[i, 1].set_aspect('equal')
+        axs[i, 1].set_xlabel('x')
+        axs[i, 1].set_ylabel('y')
+    plt.show()
