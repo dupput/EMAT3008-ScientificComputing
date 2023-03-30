@@ -50,9 +50,42 @@ def plot_phase_plane_2D(t, y):
 
 
 def animate_PDE(bvp, u, t):
+    """
+    Function to animate PDE solution. Only works in Jupyter Notebook.
+
+    Parameters
+    ----------
+    bvp : BVP
+        Boundary value problem object.
+    u : array
+        Solution array. Must have shape (len(x), len(t)).
+    t : array
+        Time array.
+
+    Returns
+    -------
+    anim : matplotlib.animation.FuncAnimation
+        Animation object.
+
+    Examples
+    --------
+    >>> f_fun = lambda x, t: np.zeros(len(x))
+    >>> q_fun = lambda x, u: 2*u*(1-u)
+    >>> bvp = BVP(0, 10, 100, alpha=1, delta=0, condition_type='Neumann', f_fun=f_fun, q_fun=q_fun, D=0.1)
+    >>> t, dt, C = bvp.time_discretization(0, 20, C=0.4)
+    >>> u = bvp.scipy_solver(t)
+    >>> %matplotlib notebook            # This line is needed to render the animation in Jupyter Notebook
+    >>> animate_PDE(bvp, u, t)
+
+    """
+
+    # Animate solution using matplotlib
+    import matplotlib.pyplot as plt
+    import matplotlib.animation as animation
+
     print('Animating...')
     fig = plt.figure()
-    ax = plt.axes(xlim=(bvp.a, bvp.b), ylim=(-1.5, 1.5))
+    ax = plt.axes(xlim=(bvp.a, bvp.b), ylim=(-u.max(), u.max()))
     line, = ax.plot([], [], lw=2)
 
     def init():
@@ -101,3 +134,4 @@ def plot_PDE_fixed_time(x, u, t, analytic_sol):
         fig.add_trace(go.Scatter(x=x, y=analytic_sol(x, t_check), name=f'Analytic t = {t_check}', mode='lines', line=dict(dash='dash')))
 
     fig.show()
+
