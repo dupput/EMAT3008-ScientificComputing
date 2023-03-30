@@ -1,5 +1,6 @@
 from scipy.optimize import fsolve
 import numpy as np
+import warnings
 
 # Custom exceptions
 class InputError(Exception):
@@ -61,6 +62,9 @@ def rk4_step(fun, t, y, h):
     y : float
         New value of y.
     """
+    if h < 0.001:
+        warnings.warn('A step size of less than 0.001 is not recommended for the RK4 method. Possible rounding errors may occur.')
+
     k1 = fun(t, y)
     k2 = fun(t + h/2, y + h*k1/2)
     k3 = fun(t + h/2, y + h*k2/2)
