@@ -47,7 +47,7 @@ class BVP:
         Constant coefficient in the differential equation. Default value is None.
     """
     def __init__(self, a, b, N, alpha, beta=None, delta=None, gamma=None, condition_type=None, 
-                 q_fun=None, f_fun=None, D=None):
+                 q_fun=None, f_fun=None, D=1):
         self.a = a
         self.b = b
         self.alpha = alpha
@@ -291,12 +291,18 @@ class BVP:
         """
         if self.condition_type == 'Dirichlet':
             A, b, x_array = self.dirichlet_boundary_conditions()
+            self.shape_ = 'N-1'
+            self.shape = self.N-1
         
         elif self.condition_type == 'Neumann':
             A, b, x_array = self.neumann_boundary_conditions()
+            self.shape_ = 'N'
+            self.shape = self.N
         
         elif self.condition_type == 'Robin':
             A, b, x_array = self.robin_boundary_conditions()
+            self.shape_ = 'N'
+            self.shape = self.N
         
         else:
             raise ValueError('condition_type must be either Dirichlet or Neumann or Robin')
@@ -304,7 +310,7 @@ class BVP:
         return A, b, x_array
 
     
-    def solve_matrices(self, A, b, x_array=None, u_array=None):
+    def solve_matrices(self, A, b, u_array=None, x_array=None):
         """
         Function to solve the linear system of equations Au = -b - q(x, u) * dx^2.
         The function q(x, u) is defined by the user and must be linear in u.
@@ -315,20 +321,20 @@ class BVP:
             Matrix A. Must be size consistent with b, x_array and u_array.
         b : numpy.ndarray
             Vector b. Must be consistent with A, x_array and u_array.
-        x_array : numpy.ndarray, optional
-            Array of x values corresponding to A and b. Must be consistent with A, b and u_array. 
-            Must be provided if q_fun is provided. The default is None.
         u_array : numpy.ndarray, optional
             Array of u values corresponding to A and b. Must be consistent with A, b and x_array. 
+            Must be provided if q_fun is provided. The default is None.
+        x_array : numpy.ndarray, optional
+            Array of x values corresponding to A and b. Must be consistent with A, b and u_array. 
             Must be provided if q_fun is provided. The default is None.
 
         Returns
         -------
         solution : numpy.ndarray
             Solution to the linear system of equations. solution is a vector of size x_array.
+        success : bool
+            Boolean indicating whether the linear system of equations was successfully solved.
         """
-        # TODO: Add a check to make sure that A, b, x_array and u_array are consistent
-
         
         # Add the source term to the vector b
         if self.q_fun is not None:
@@ -336,12 +342,84 @@ class BVP:
                 raise ValueError('x_array and u_array must be provided if q_fun is provided')
             else:
                 b = b + self.q_fun(x_array, u_array) * self.dx**2
-                
-        # Solve the linear system
-        solution = np.linalg.solve(A, -b)
 
-        self.solution = self.concatanate(solution, type='ODE')
-        return self.solution
+        try:        
+            # Solve the linear system
+            u = np.linalg.solve(A, -b)
+            success = True
+
+            return u, success
+        
+        except:
+            success = False
+            return None, success
+        
+
+    def solve_thomas_algorithm(self, A, b, u_array=None, x_array=None):
+        """
+        Function to solve the linear system of equations Au = -b - q(x, u) * dx^2.
+        The function q(x, u) is defined by the user and must be linear in u.
+        The function uses the Thomas algorithm to solve the linear system of equations:
+
+            a_i * u_{i-1} + b_i * u_i + c_i * u_{i+1} = d_i
+
+        where
+            d_i = -b_i - q(x_i, u_i) * dx^2
+
+        Parameters
+        ----------
+        A : numpy.ndarray
+            Matrix A. Must be size consistent with b, x_array and u_array.
+        b : numpy.ndarray
+            Vector b. Must be consistent with A, x_array and u_array.
+        u_array : numpy.ndarray, optional
+            Array of u values corresponding to A and b. Must be consistent with A, b and x_array. 
+            Must be provided if q_fun is provided. The default is None.
+        x_array : numpy.ndarray, optional
+            Array of x values corresponding to A and b. Must be consistent with A, b and u_array. 
+            Must be provided if q_fun is provided. The default is None.
+
+        Returns
+        -------
+        solution : numpy.ndarray
+            Solution to the linear system of equations. solution is a vector of size x_array.
+        success : bool
+            Boolean indicating whether the linear system of equations was successfully solved.
+        """
+        
+        # Add the source term to the vector b and define the vector d
+        if self.q_fun is not None:
+            if x_array is None or u_array is None:
+                raise ValueError('x_array and u_array must be provided if q_fun is provided')
+            else:
+                d = -(b + self.q_fun(x_array, u_array) * self.dx**2)
+        else:
+            d = -b
+
+        try:        
+            # define the vectors a, b and c
+            a = A.diagonal(-1).copy()
+            b = A.diagonal().copy()
+            c = A.diagonal(1).copy()
+
+            # Forward sweep
+            for i in range(1, self.shape):
+                m = a[i-1]/b[i-1]
+                b[i] = b[i] - m * c[i-1]
+                d[i] = d[i] - m * d[i-1]
+
+            # Backward sweep
+            u = np.zeros(self.shape)
+            u[-1] = d[-1]/b[-1]
+            for i in range(self.shape-2, -1, -1):
+                u[i] = (d[i] - c[i] * u[i+1])/b[i]
+
+            success = True
+            return u, success
+        
+        except Exception as e:
+            success = False
+            return u_array, success
 
 
     def solve_nonlinear(self, A, b, u_array, x_array=None):
@@ -378,15 +456,66 @@ class BVP:
             func = lambda u_array: self.D * A @ u_array + b + self.q_fun(x_array, u_array) * self.dx**2
         
         sol = root(func, u_array)
-        solution = sol.x
+        u = sol.x
         
-        self.solution = self.concatanate(solution, type='ODE')
-        return self.solution, sol.success
+        return u, sol.success
     
 
-    def solve_bvp(self, A, b, u_array, x_array=None, method='Scipy'):
-        # TODO: Create handler for different methods to pass to solve_nonlinear or solve_matrices
-        pass
+    def solve_bvp(self, u_array=None, method='linear'):
+        """
+        Function handler to solve the boundary value problem for a fixed time value. BVP is solved using either the
+        Scipy's root solver for nonlinear problems or numpy's linalg solver for linear problems. If the q_fun contains 
+        a nonlinear term, then the Scipy's root solver should be selected. If the q_fun is linear, then the numpy's 
+        linalg solver should be selected.
+
+        Parameters
+        ----------
+        u_array : numpy.ndarray
+            Array of u values corresponding to the initial guess for the solution. Must be consistent with with the boundary conditions. Must be 
+            provided if method is 'nonlinear'. The default is None.
+        method : str, optional
+            Method to solve the boundary value problem. If method is 'linear', then the numpy's linalg solver is used. If method is 'nonlinear',
+            then the Scipy's root solver is used. The default is 'linear'.
+
+        Returns
+        -------
+        solution : numpy.ndarray
+            Solution to the boundary value problem. solution is a vector of size x_array.
+        success : bool
+            Boolean indicating whether the solver was successful or not.
+        """
+        # Method check
+        METHODS = {'linear': self.solve_matrices, 'tridiagonal': self.solve_thomas_algorithm,
+                   'nonlinear': self.solve_nonlinear}
+        if method not in METHODS:
+            raise ValueError('Invalid method: {}. Method must be one of {}.'.format(method, METHODS.keys()))
+        else:
+            method = METHODS[method]
+
+        # Prepare the matrices
+        A, b, x_array = self.construct_matrix()
+
+        # Check arrays are consistent
+        if u_array is None:
+            u_array = np.zeros(self.shape)
+            
+        elif len(u_array) != len(x_array) or len(u_array) != len(b) or len(u_array) != len(A):
+            message = """
+            The length of the initial guess array must be consistent with the length of the x_array, b and A.
+            For {} conditions, the length of the initial guess array must be {}, ().""".format(self.condition_type, self.shape, len(x_array))
+            raise InputError(message)
+
+        # Solve the boundary value problem
+        u, success = method(A, b, u_array=u_array, x_array=x_array)
+
+        if not success:
+            warnings.warn('The solver was not successful. The solution may not be accurate.')
+
+        # Concatanate the solution with the boundary conditions
+        u = self.concatanate(u, type='ODE')
+
+        return u, success
+
     
 
     def concatanate(self, u, type='ODE', t=None):
@@ -609,50 +738,24 @@ class BVP:
 if __name__ == '__main__':
     a = 0
     b = 1
+    N = 10
     alpha = 0
     beta = 0
-    f_fun = lambda x, t: np.sin(np.pi * (x - a) / (b - a))
-    D = 0.1
-    N = 100
+    condition_type = 'Dirichlet'
+    q_fun = lambda x, u: 1
 
+    bvp = BVP(a, b, N, alpha, beta, condition_type=condition_type, q_fun=q_fun)
 
-    bvp = BVP(a, b, N, alpha, beta, D=D, condition_type='Dirichlet', f_fun=f_fun)
+    # u_DD, success = bvp.solve_bvp()
+    u_tridiag, success = bvp.solve_bvp(method='tridiagonal')
+    u_linear, success = bvp.solve_bvp(method='linear')
+    u_nonlinear, success = bvp.solve_bvp(method='nonlinear')
 
-    t_boundary = 0
-    C = 0.5
-    t_final = 2
+    def u_analytic(x):
+        return -1/2 * (x - a) * (x - b) + ((beta - alpha) / (b - a)) * (x - a) + alpha
 
-    t, dt, C = bvp.time_discretization(t_boundary, t_final, C=C)
+    x_values = bvp.x_values
+    u_analytic = u_analytic(x_values)
 
-    u = bvp.explicit_euler(t)
-    print(u.shape)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    # a = 0
-    # b = 1
-    # alpha = 0
-    # beta = 0
-    # N = 100
-    # D = 0.1
-
-    # def func(x, t):
-    #     return np.sin(np.pi * x)
-    
-    # bvp = BVP(a, b, N, alpha, beta, D=D, condition_type='Dirichlet', f_fun=func)
-
-    # y, t = bvp.solve_PDE(t_boundary=0, t_final=2, C=0.45)   
+    # Assert that the solutions are the same
+    assert np.allclose(u_tridiag, u_linear, u_nonlinear, u_analytic)
