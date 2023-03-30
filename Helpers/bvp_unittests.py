@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 
-from bvp import BVP, InputError
+from Helpers.bvp import BVP, InputError
 
 class TestBVP(unittest.TestCase):
     def test_boundary_conditions_Dirichlet(self):

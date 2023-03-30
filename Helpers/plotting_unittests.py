@@ -1,7 +1,7 @@
 import unittest   # The test framework
 import numpy as np
 
-from plotting import plot_phase_plane_2D
+from Helpers.plotting import plot_phase_plane_2D
 
 
 class Test_plot_phase_plane_2D(unittest.TestCase):
