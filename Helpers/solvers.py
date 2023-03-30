@@ -62,9 +62,6 @@ def rk4_step(fun, t, y, h):
     y : float
         New value of y.
     """
-    if h < 0.001:
-        warnings.warn('A step size of less than 0.001 is not recommended for the RK4 method. Possible rounding errors may occur.')
-
     k1 = fun(t, y)
     k2 = fun(t + h/2, y + h*k1/2)
     k3 = fun(t + h/2, y + h*k2/2)
@@ -198,6 +195,10 @@ def solve_to(fun, t0, y0, tf=None, n_max=None, method='RK4', deltat_max=0.01, ar
 
             if tf <= t0:
                 raise ValueError('tf must be greater than t0.')
+            
+            if tf < 0.001 and method == rk4_step.__name__:
+                warnings.warn('A step size ({}) of less than 0.001 is not recommended for the RK4 method. Possible rounding errors may occur.'.format(h))
+
         except TypeError:
             raise ValueError('tf must be a float or int. Value given: {}. Type: {}'.format(tf, type(tf)))
 
