@@ -149,38 +149,49 @@ def bvp_continuation(bvp, C_start, C_end, N_C, q_base, method='natural_parameter
     if method == 'natural_parameter_estimation':
         Cs = np.linspace(C_start, C_end, N_C)
 
-    max_u = np.zeros(len(Cs))
-    u_array = np.ones(N-1)
-    all_u = np.zeros((N_C, N+1))
+    # Initalize arrays to determine sizes
+    bvp.construct_matrix()      
+    u_array = np.ones(bvp.shape)
+    all_u = np.zeros((N_C, bvp.N+1))
 
-    fig = go.Figure()
     for C in Cs:
         # Redefine the q function with the new value of C in terms of q
         q = lambda x, u: q_base(x, u, C)
         bvp.q_fun = q
     
-        u_guess = np.zeros(N-1)    
+        u_guess = np.zeros(bvp.N-1)    
         u_array, success = bvp.solve_bvp(u_guess, 'nonlinear')
 
         if success:
             all_u[Cs == C, :] = u_array
+            
     return Cs, all_u
 
 
 
-
 if __name__ == '__main__':
-    func = lambda t, x, c: [t, x**3 - x + c]
-    x0 = 1
-    par0 = [-3]
-    vary_par = 0
-    step_size = 0.01
-    max_steps = 2000
+    from bvp import BVP
+    import numpy as np
+    import plotly.graph_objects as go
+    a = 0
+    b = 1
+    N = 10
+    alpha = 0
+    beta = 0
+    D = 1.0
+    C = 0
+    def q_base(x, u, C=C):
+        return C*np.exp(u)
+    q_fun = lambda x, u: q_base(x, u, C)
 
-    x, par, dpars = simple_continuation(func, x0, par0, vary_par, step_size, max_steps)
+    bvp = BVP(a, b, N, alpha, beta, condition_type='Dirichlet', q_fun=q_fun, D=D)
+    Cs, all_u = bvp_continuation(bvp, 0, 4, 200, q_base)
+    max_u = np.max(all_u, axis=1)
+    import matplotlib.pyplot as plt
 
-    plt.plot(par, x, '.-', label='scipy.optimize.fsolve', markersize=2)
-    plt.xlabel('Parameter')
-    plt.ylabel('x')
-    plt.grid()
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.plot(Cs[max_u != 0], max_u[max_u != 0])
+    ax.set_xlabel('C')
+    ax.set_ylabel('Maximum value of u(x)')
     plt.show()
