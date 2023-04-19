@@ -619,7 +619,7 @@ class BVP:
         """
         A, b, x_array = self.construct_matrix()
 
-        I = np.eye(self.N-1)
+        I = np.eye(self.shape)
 
         lhs = I - self.C * A
         rhs = self.C * b
@@ -649,7 +649,7 @@ class BVP:
         """
         A, b, x_array = self.construct_matrix()
 
-        I = np.eye(self.N-1)
+        I = np.eye(self.shape)
 
         lhs = I - self.C * A / 2
         rhs = I + self.C * A / 2
@@ -830,32 +830,26 @@ class BVP:
 
 
 if __name__ == '__main__':
-    # Import assertEqual and asserTrue
-    from unittest import TestCase
-    assertEqual = TestCase().assertEqual
-    assertTrue = TestCase().assertTrue
-    # Initialize a BVP instance with the given parameters
-    a = 0
-    b = 1
-    alpha = 0
-    beta = 0
-    f_fun = lambda x, t: np.sin(np.pi * (x - a) / (b - a))
-    D = 0.1
-    N = 100
-    bvp = BVP(a, b, N, alpha, beta, D=D, condition_type='Dirichlet', f_fun=f_fun)
+    # from Helpers.bvp import BVP
+    # from Helpers.plotting import animate_PDE
+    import numpy as np
 
-    methods = ['Scipy Solver', 'Explicit Euler', 'Implicit Euler', 'Crank-Nicolson']
-    for method in methods:
-        print('Testing method: {}'.format(method))
-        
-        u, t, dt, C = bvp.solve_PDE(0, 2, C=0.4, method=method)
-        print(u.shape, len(t), dt, C)
-        print(bvp.N+1, len(t))
-        try:
-            assertEqual(u.shape, (bvp.N+1, len(t)))
-            assertTrue(np.all(t >= 0))
-            assertTrue(np.all(t <= 2))
-            assertTrue(dt > 0)
-            assertTrue(C > 0)
-        except:
-            continue
+    # Fisher-KPP problem
+    a = 0
+    b = 20
+    N = 100
+    alpha = 1
+    delta = 0
+    condition_type = 'Neumann'
+    D = 0.1
+    r = 2
+    f_fun = lambda x, t: np.zeros(len(x))
+    q_fun = lambda x, u: r*u*(1-u)
+
+    bvp = BVP(a, b, N, alpha=alpha, delta=delta, condition_type=condition_type, f_fun=f_fun, q_fun=q_fun, D=D)
+
+    C = 0.4
+    t_boundary = 0
+    t_final = 20
+
+    u = bvp.solve_PDE(t_boundary, t_final, C=C, method='Crank-Nicolson')
