@@ -16,6 +16,16 @@ class BVP:
     """
     Class for solving boundary value problems.
 
+    Functions inside the class have been split into distinct sections for clarity. The sections are:
+    - Check functions
+    - Discretisation functions
+    - Boundary conditions functions
+    - ODE solvers
+    - PDE solvers
+
+    The only front facing functions are the two handlers, solve_ode and solve_pde, which call the
+    appropriate functions to solve the problem.
+
     Parameters
     ----------
     a : float
@@ -67,9 +77,9 @@ class BVP:
         self.check_functions()
 
         # Create the grid
-        self.grid()
+        self.grid_discretisation()
 
-    
+    # -------------------------------- Check functions --------------------------------
     def check_boundary_validity(self):
         """
         Check that the boundary conditions are valid. Conditions are:
@@ -115,7 +125,8 @@ class BVP:
                 raise ValueError('f_fun must be a function')
 
 
-    def grid(self):
+    # -------------------------------- Discretisation functions --------------------------------
+    def grid_discretisation(self):
         """
         Create the grid. The grid is a numpy array of N+1 points between a and b.
  
@@ -135,6 +146,54 @@ class BVP:
         self.dx = (self.b - self.a) / self.N
 
 
+    def time_discretization(self, t_boundary, t_final, dt=None, C=None):
+        """
+        Function to discretize time from t_boundary to t_final. Either dt or C must be provided, and the other will be calculated.
+
+        Parameters
+        ----------
+        t_boundary : float
+            Initial time.
+        t_final : float
+            Final time.
+        dt : float, optional
+            Time step. The default is None.
+        C : float, optional
+            Courant number. The default is None.
+
+        Returns
+        -------
+        t : numpy.ndarray
+            Array of time values.
+        dt : float
+            Time step.
+        C : float
+            Courant number.
+        """
+        # Work out the time step or Courant number
+        if dt is None and C is None:
+            raise InputError('Either dt or C must be provided')
+        elif dt is not None and C is not None:
+            raise InputError('Only one of dt or C must be provided')
+        elif dt is not None:
+            self.dt = dt
+            self.C = self.D * dt / self.dx**2
+        elif C is not None:
+            self.C = C
+            self.dt = C * self.dx**2 / self.D
+        C = self.C
+        dt = self.dt
+
+        if C > 0.5:
+            # Raise warning
+            warnings.warn('C = D * dt / dx^2 = {} > 0.5. The solution may be unstable.'.format(C))
+        
+        N_time = ceil((t_final - t_boundary) / dt)
+        t = dt * np.arange(N_time + 1) + t_boundary
+        return t, dt, C
+
+
+    # -------------------------------- Boundary condition functions --------------------------------
     def dirichlet_boundary_conditions(self):
         """
         Function to define the matrix A and the vector b for the Dirichlet boundary conditions.
@@ -228,6 +287,7 @@ class BVP:
 
         return A, b, x_array
     
+
     def robin_boundary_conditions(self):
         """
         Function to define the matrix A and the vector b for the Robin boundary conditions.
@@ -310,6 +370,7 @@ class BVP:
         return A, b, x_array
 
     
+    # -------------------------- ODE Solvers -------------------------- #
     def solve_matrices(self, A, b, u_array=None, x_array=None):
         """
         Function to solve the linear system of equations Au = -b - q(x, u) * dx^2.
@@ -461,7 +522,7 @@ class BVP:
         return u, sol.success
     
 
-    def solve_bvp(self, u_array=None, method='linear'):
+    def solve_ODE(self, u_array=None, method='linear'):
         """
         Function handler to solve the boundary value problem for a fixed time value. BVP is solved using either the
         Scipy's root solver for nonlinear problems or numpy's linalg solver for linear problems. If the q_fun contains 
@@ -515,95 +576,9 @@ class BVP:
         u = self.concatanate(u, type='ODE')
 
         return u, success
-
     
 
-    def concatanate(self, u, type='ODE', t=None):
-        """
-        Function to concatanate the solution vector with the boundary conditions.
-
-        Parameters
-        ----------
-        u : numpy.ndarray
-            Solution vector.
-        type : str, optional
-            Type of problem. If type is 'ODE', then the singular boundary conditions are concatanated to the solution vector.
-            If type is 'PDE', then the vector of boundary conditions is concatanated to the solution vector.
-            The default is 'ODE'.
-        t : numpy.ndarray, optional
-            Array of time values. Must be provided if type is 'PDE'. The default is None.
-
-        Returns
-        -------
-        numpy.ndarray
-            Solution vector with boundary conditions concatanated.
-        """
-        # TODO: Add a check to make sure that u is consistent with type and t
-
-        if self.condition_type == 'Dirichlet':
-            if type == 'ODE':
-                return np.concatenate(([self.alpha], u, [self.beta]))
-            elif type == 'PDE':
-                alpha_boundary = np.array([self.alpha] * len(t)).reshape(1, -1)
-                beta_boundary = np.array([self.beta] * len(t)).reshape(1, -1)
-                return np.concatenate((alpha_boundary, u, beta_boundary), axis=0)
-            
-        elif self.condition_type == 'Neumann' or self.condition_type == 'Robin':
-            if type == 'ODE':
-                return np.concatenate(([self.alpha], u))
-            elif type == 'PDE':
-                alpha_boundary = np.array([self.alpha] * len(t)).reshape(1, -1)
-                return np.concatenate((alpha_boundary, u), axis=0)
-        
-    
-    def time_discretization(self, t_boundary, t_final, dt=None, C=None):
-        """
-        Function to discretize time from t_boundary to t_final. Either dt or C must be provided, and the other will be calculated.
-
-        Parameters
-        ----------
-        t_boundary : float
-            Initial time.
-        t_final : float
-            Final time.
-        dt : float, optional
-            Time step. The default is None.
-        C : float, optional
-            Courant number. The default is None.
-
-        Returns
-        -------
-        t : numpy.ndarray
-            Array of time values.
-        dt : float
-            Time step.
-        C : float
-            Courant number.
-        """
-        # Work out the time step or Courant number
-        if dt is None and C is None:
-            raise InputError('Either dt or C must be provided')
-        elif dt is not None and C is not None:
-            raise InputError('Only one of dt or C must be provided')
-        elif dt is not None:
-            self.dt = dt
-            self.C = self.D * dt / self.dx**2
-        elif C is not None:
-            self.C = C
-            self.dt = C * self.dx**2 / self.D
-        C = self.C
-        dt = self.dt
-
-        if C > 0.5:
-            # Raise warning
-            warnings.warn('C = D * dt / dx^2 = {} > 0.5. The solution may be unstable.'.format(C))
-        
-        N_time = ceil((t_final - t_boundary) / dt)
-        t = dt * np.arange(N_time + 1) + t_boundary
-        return t, dt, C
-
-    
-
+    # -------------------------- PDE Solvers -------------------------- #
     def scipy_solver(self, t):
         """
         Function to solve the PDE using Scipy's solve_ivp.
@@ -731,6 +706,48 @@ class BVP:
             u[:, ti+1] = np.linalg.solve(lhs, rhs @ u[:, ti] + self.C * b)
 
         return u
+    
+    
+    def concatanate(self, u, type='ODE', t=None):
+        """
+        Function to concatanate the solution vector with the boundary conditions.
+
+        Parameters
+        ----------
+        u : numpy.ndarray
+            Solution vector.
+        type : str, optional
+            Type of problem. If type is 'ODE', then the singular boundary conditions are concatanated to the solution vector.
+            If type is 'PDE', then the vector of boundary conditions is concatanated to the solution vector.
+            The default is 'ODE'.
+        t : numpy.ndarray, optional
+            Array of time values. Must be provided if type is 'PDE'. The default is None.
+
+        Returns
+        -------
+        numpy.ndarray
+            Solution vector with boundary conditions concatanated.
+        """
+        # TODO: Add a check to make sure that u is consistent with type and t
+
+        if self.condition_type == 'Dirichlet':
+            if type == 'ODE':
+                return np.concatenate(([self.alpha], u, [self.beta]))
+            elif type == 'PDE':
+                alpha_boundary = np.array([self.alpha] * len(t)).reshape(1, -1)
+                beta_boundary = np.array([self.beta] * len(t)).reshape(1, -1)
+                return np.concatenate((alpha_boundary, u, beta_boundary), axis=0)
+            
+        elif self.condition_type == 'Neumann' or self.condition_type == 'Robin':
+            if type == 'ODE':
+                return np.concatenate(([self.alpha], u))
+            elif type == 'PDE':
+                alpha_boundary = np.array([self.alpha] * len(t)).reshape(1, -1)
+                return np.concatenate((alpha_boundary, u), axis=0)
+        
+    
+    
+
 
 
 
@@ -746,10 +763,10 @@ if __name__ == '__main__':
 
     bvp = BVP(a, b, N, alpha, beta, condition_type=condition_type, q_fun=q_fun)
 
-    # u_DD, success = bvp.solve_bvp()
-    u_tridiag, success = bvp.solve_bvp(method='tridiagonal')
-    u_linear, success = bvp.solve_bvp(method='linear')
-    u_nonlinear, success = bvp.solve_bvp(method='nonlinear')
+    # u_DD, success = bvp.solve_ODE()
+    u_tridiag, success = bvp.solve_ODE(method='tridiagonal')
+    u_linear, success = bvp.solve_ODE(method='linear')
+    u_nonlinear, success = bvp.solve_ODE(method='nonlinear')
 
     def u_analytic(x):
         return -1/2 * (x - a) * (x - b) + ((beta - alpha) / (b - a)) * (x - a) + alpha
