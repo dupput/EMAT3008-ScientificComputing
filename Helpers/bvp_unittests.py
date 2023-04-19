@@ -184,6 +184,49 @@ class TestBVP(unittest.TestCase):
         u_analytic = u_analytic(x_values)
         # Assert that the solutions are the same
         assert np.allclose(u_tridiag, u_linear, u_nonlinear, u_analytic)
+
+    def setUp(self):
+        # Initialize a BVP instance with the given parameters
+        a = 0
+        b = 1
+        alpha = 0
+        beta = 0
+        f_fun = lambda x, t: np.sin(np.pi * (x - a) / (b - a))
+        D = 0.1
+        N = 100
+        self.bvp = BVP(a, b, N, alpha, beta, D=D, condition_type='Dirichlet', f_fun=f_fun)
+
+    def test_type_errors(self):
+        with self.assertRaises(TypeError):
+            self.bvp.solve_PDE('0', 2)
+        with self.assertRaises(TypeError):
+            self.bvp.solve_PDE(0, '2')
+        with self.assertRaises(TypeError):
+            self.bvp.solve_PDE(0, 2, dt='0.1')
+
+    def test_method_value_error(self):
+        with self.assertRaises(ValueError):
+            self.bvp.solve_PDE(0, 2, method='InvalidMethod')
+
+    def test_methods(self):
+        methods = ['Scipy Solver', 'Explicit Euler', 'Implicit Euler', 'Crank-Nicolson']
+        for method in methods:
+            u, t, dt, C = self.bvp.solve_PDE(0, 2, C=0.4, method=method)
+            self.assertEqual(u.shape, (self.bvp.N+1, len(t)))
+            self.assertTrue(np.all(t >= 0))
+            self.assertTrue(np.all(t <= 2))
+            self.assertTrue(dt > 0)
+            self.assertTrue(C > 0)
+
+    def test_time_step(self):
+        u1, t1, dt1, C1 = self.bvp.solve_PDE(0, 2, dt=0.1, C=None)
+        u2, t2, dt2, C2 = self.bvp.solve_PDE(0, 2, dt=None, C=0.5)
+        self.assertNotEqual(dt1, dt2)
+
+    def test_courant_number(self):
+        u1, t1, dt1, C1 = self.bvp.solve_PDE(0, 2, dt=None, C=0.5)
+        u2, t2, dt2, C2 = self.bvp.solve_PDE(0, 2, dt=None, C=1)
+        self.assertNotEqual(C1, C2)
         
 
 
