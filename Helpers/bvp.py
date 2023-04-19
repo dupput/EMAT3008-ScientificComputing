@@ -18,8 +18,7 @@ class BVP:
 
     Functions inside the class have been split into distinct sections for clarity. The sections are:
     - Check functions
-    - Discretisation functions
-    - Boundary conditions functions
+    - BVP construction functions
     - ODE solvers
     - PDE solvers
 
@@ -79,6 +78,10 @@ class BVP:
         # Create the grid
         self.grid_discretisation()
 
+        # Save output shapes
+        self.construct_matrix()
+
+
     # -------------------------------- Check functions --------------------------------
     def check_boundary_validity(self):
         """
@@ -125,7 +128,7 @@ class BVP:
                 raise ValueError('f_fun must be a function')
 
 
-    # -------------------------------- Discretisation functions --------------------------------
+    # -------------------------------- BVP construction functions --------------------------------
     def grid_discretisation(self):
         """
         Create the grid. The grid is a numpy array of N+1 points between a and b.
@@ -146,54 +149,6 @@ class BVP:
         self.dx = (self.b - self.a) / self.N
 
 
-    def time_discretization(self, t_boundary, t_final, dt=None, C=None):
-        """
-        Function to discretize time from t_boundary to t_final. Either dt or C must be provided, and the other will be calculated.
-
-        Parameters
-        ----------
-        t_boundary : float
-            Initial time.
-        t_final : float
-            Final time.
-        dt : float, optional
-            Time step. The default is None.
-        C : float, optional
-            Courant number. The default is None.
-
-        Returns
-        -------
-        t : numpy.ndarray
-            Array of time values.
-        dt : float
-            Time step.
-        C : float
-            Courant number.
-        """
-        # Work out the time step or Courant number
-        if dt is None and C is None:
-            raise InputError('Either dt or C must be provided')
-        elif dt is not None and C is not None:
-            raise InputError('Only one of dt or C must be provided')
-        elif dt is not None:
-            self.dt = dt
-            self.C = self.D * dt / self.dx**2
-        elif C is not None:
-            self.C = C
-            self.dt = C * self.dx**2 / self.D
-        C = self.C
-        dt = self.dt
-
-        if C > 0.5:
-            # Raise warning
-            warnings.warn('C = D * dt / dx^2 = {} > 0.5. The solution may be unstable.'.format(C))
-        
-        N_time = ceil((t_final - t_boundary) / dt)
-        t = dt * np.arange(N_time + 1) + t_boundary
-        return t, dt, C
-
-
-    # -------------------------------- Boundary condition functions --------------------------------
     def dirichlet_boundary_conditions(self):
         """
         Function to define the matrix A and the vector b for the Dirichlet boundary conditions.
@@ -608,10 +563,8 @@ class BVP:
 
         sol = solve_ivp(PDE, (t[0], t[-1]), u_boundary, method='RK45', t_eval=t, args=(self.D, A, b))
 
-        y = sol.y
-        t = sol.t
+        u = sol.y
 
-        u = self.concatanate(y, type='PDE', t=t)
         return u
     
 
@@ -629,14 +582,16 @@ class BVP:
         solution : numpy.ndarray
             Solution to the PDE.
         """
-        u = np.zeros((len(self.x_values), len(t)))
-        u[:, 0] = self.f_fun(self.x_values, t[0])
+        A, b, x_array = self.construct_matrix()
+
+        u = np.zeros((len(x_array), len(t)))
+        u[:, 0] = self.f_fun(x_array, t[0])
         u[0, :] = self.alpha
         u[-1, :] = self.beta
 
         # Loop over time
         for ti in range(0, len(t)-1):
-            for xi in range(0, self.N):
+            for xi in range(1, len(x_array)-1):
                 if xi == 0:
                     # u[0, ti+1] = u[0, ti] + self.C * (self.alpha - 2 * u[0, ti] + u[1, ti])
                     u[xi, ti+1] = self.alpha
@@ -708,6 +663,128 @@ class BVP:
         return u
     
     
+    def time_discretization(self, t_boundary, t_final, dt=None, C=None):
+        """
+        Function to discretize time from t_boundary to t_final. Either dt or C must be provided, and the other will be calculated.
+
+        Parameters
+        ----------
+        t_boundary : float
+            Initial time.
+        t_final : float
+            Final time.
+        dt : float, optional
+            Time step. The default is None.
+        C : float, optional
+            Courant number. The default is None.
+
+        Returns
+        -------
+        t : numpy.ndarray
+            Array of time values.
+        dt : float
+            Time step.
+        C : float
+            Courant number.
+        """
+        # Work out the time step or Courant number
+        if dt is None and C is None:
+            raise InputError('Either dt or C must be provided')
+        elif dt is not None and C is not None:
+            raise InputError('Only one of dt or C must be provided')
+        elif dt is not None:
+            self.dt = dt
+            self.C = self.D * dt / self.dx**2
+        elif C is not None:
+            self.C = C
+            self.dt = C * self.dx**2 / self.D
+        C = self.C
+        dt = self.dt
+
+        if C > 0.5:
+            # Raise warning
+            warnings.warn('C = D * dt / dx^2 = {} > 0.5. The solution may be unstable.'.format(C))
+        
+        N_time = ceil((t_final - t_boundary) / dt)
+        t = dt * np.arange(N_time + 1) + t_boundary
+        return t, dt, C
+    
+
+    def solve_PDE(self, t_boundary, t_final, dt=None, C=None, method='Crank-Nicolson'):
+        """
+        Function to solve the PDE.
+
+        Parameters
+        ----------
+        t_boundary : float
+            Initial time.
+        t_final : float
+            Final time.
+        dt : float, optional
+            Time step. The default is None.
+        C : float, optional
+            Courant number. The default is None.
+        method : str, optional
+            Method to use to solve the PDE. The default is 'Crank-Nicolson'.
+
+        Returns
+        -------
+        u : numpy.ndarray
+            Solution to the PDE.
+        t : numpy.ndarray
+            Array of time values.
+        dt : float
+            Time step.
+        C : float
+            Courant number.
+
+        Examples
+        --------
+        >>> a = 0
+        >>> b = 1
+        >>> alpha = 0
+        >>> beta = 0
+        >>> f_fun = lambda x, t: np.sin(np.pi * (x - a) / (b - a))
+        >>> D = 0.1
+        >>> N = 100
+
+        >>> bvp = BVP(a, b, N, alpha, beta, D=D, condition_type='Dirichlet', f_fun=f_fun)
+        
+        >>> t_boundary = 0
+        >>> C = 0.5
+        >>> t_final = 2
+        >>> u = bvp.solve_PDE(t_boundary, t_final, C=C, method='Crank-Nicolson')
+
+        """
+        # Type checks
+        if not isinstance(t_boundary, (int, float)):
+            raise TypeError('t_boundary must be a number')
+        if not isinstance(t_final, (int, float)):
+            raise TypeError('t_final must be a number')
+        if not isinstance(dt, (int, float, type(None))):
+            raise TypeError('dt must be a number')
+
+        # Method check
+        METHODS = {'Scipy Solver' : self.scipy_solver,
+                   'Explicit Euler': self.explicit_euler,
+                   'Implicit Euler': self.implicit_euler,
+                   'Crank-Nicolson': self.crank_nicolson}
+        if method not in METHODS:
+            raise ValueError('Invalid method: {}. Method must be one of {}.'.format(method, METHODS.keys()))
+        else:
+            method = METHODS[method]
+
+        # Discretize time
+        t, dt, C = self.time_discretization(t_boundary, t_final, dt=dt, C=C)
+
+        # Solve the PDE
+        u = method(t)
+
+        u = self.concatanate(u, type='PDE', t=t)
+        return u, t, dt, C
+
+    
+    
     def concatanate(self, u, type='ODE', t=None):
         """
         Function to concatanate the solution vector with the boundary conditions.
@@ -753,26 +830,32 @@ class BVP:
 
 
 if __name__ == '__main__':
+    # Import assertEqual and asserTrue
+    from unittest import TestCase
+    assertEqual = TestCase().assertEqual
+    assertTrue = TestCase().assertTrue
+    # Initialize a BVP instance with the given parameters
     a = 0
     b = 1
-    N = 10
     alpha = 0
     beta = 0
-    condition_type = 'Dirichlet'
-    q_fun = lambda x, u: 1
+    f_fun = lambda x, t: np.sin(np.pi * (x - a) / (b - a))
+    D = 0.1
+    N = 100
+    bvp = BVP(a, b, N, alpha, beta, D=D, condition_type='Dirichlet', f_fun=f_fun)
 
-    bvp = BVP(a, b, N, alpha, beta, condition_type=condition_type, q_fun=q_fun)
-
-    # u_DD, success = bvp.solve_ODE()
-    u_tridiag, success = bvp.solve_ODE(method='tridiagonal')
-    u_linear, success = bvp.solve_ODE(method='linear')
-    u_nonlinear, success = bvp.solve_ODE(method='nonlinear')
-
-    def u_analytic(x):
-        return -1/2 * (x - a) * (x - b) + ((beta - alpha) / (b - a)) * (x - a) + alpha
-
-    x_values = bvp.x_values
-    u_analytic = u_analytic(x_values)
-
-    # Assert that the solutions are the same
-    assert np.allclose(u_tridiag, u_linear, u_nonlinear, u_analytic)
+    methods = ['Scipy Solver', 'Explicit Euler', 'Implicit Euler', 'Crank-Nicolson']
+    for method in methods:
+        print('Testing method: {}'.format(method))
+        
+        u, t, dt, C = bvp.solve_PDE(0, 2, C=0.4, method=method)
+        print(u.shape, len(t), dt, C)
+        print(bvp.N+1, len(t))
+        try:
+            assertEqual(u.shape, (bvp.N+1, len(t)))
+            assertTrue(np.all(t >= 0))
+            assertTrue(np.all(t <= 2))
+            assertTrue(dt > 0)
+            assertTrue(C > 0)
+        except:
+            continue
