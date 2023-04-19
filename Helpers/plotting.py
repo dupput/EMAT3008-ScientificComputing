@@ -332,3 +332,27 @@ def plot_time_series(timeSeries, b_args):
         axs[i, 1].set_xlabel('x')
         axs[i, 1].set_ylabel('y')
     plt.show()
+
+
+def plot_bvp(bvp, u_linear, u_analytical):
+    """
+    Plot the solution of the BVP and the analytical solution.
+
+    Parameters
+    ----------
+    bvp : BVP
+        The BVP object.
+    u_linear : array
+        The solution of the BVP using the linear method.
+    u_analytical : array
+        The analytical solution.
+
+    Returns
+    -------
+    None.
+    """
+    fig, ax = plt.subplots()
+    ax.plot(bvp.x_values, u_linear, label='Numerical solution')
+    ax.plot(bvp.x_values, u_analytical, label='Analytic solution', linestyle='--')
+    ax.legend()
+    plt.show()
