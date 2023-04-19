@@ -194,7 +194,7 @@ def solve_to(fun, t0, y0, tf=None, n_max=None, method='RK4', deltat_max=0.01, ar
             tf + 1 / 1
 
             if tf <= t0:
-                raise ValueError('tf must be greater than t0. Values given: t0 = {}, tf = {}.'.format(t0, tf))
+                raise ValueError('tf must be greater than t0.')
             
             if tf < 0.001 and method == rk4_step.__name__:
                 warnings.warn('A step size ({}) of less than 0.001 is not recommended for the RK4 method. Possible rounding errors may occur.'.format(h))
@@ -234,7 +234,7 @@ def solve_to(fun, t0, y0, tf=None, n_max=None, method='RK4', deltat_max=0.01, ar
     return np.array(t_array), np.array(y_array)
 
 
-def shooting(U0, ode, phase_function, ode_solver=solve_to, root_solver=fsolve, atol=1e-8, function_args=None):
+def shooting(U0, ode, phase_function, atol=1e-8):
     '''
     Shooting method for solving boundary value problems. 
     
@@ -250,17 +250,8 @@ def shooting(U0, ode, phase_function, ode_solver=solve_to, root_solver=fsolve, a
         The phase function for the ODE. The function should take the same inputs as the ODE. The phase
         function is used to determine the differential at the start of the ODE and should be zero at
         the end of the ODE.
-    ode_solver: function, optional
-        The ODE solver to be used. The solver should take the form solver(ode, t0, y0, tf, *args), where
-        ode is the ODE to be solved, t0 is the initial time, y0 is the initial condition, tf is the
-        final time, and *args are the parameters of the ODE. The default value is solve_to.
-    root_solver: function, optional
-        The optimization solver to be used. The solver should take the form solver(fun, x0), where
-        fun is the function to be minimized and x0 is the initial guess.
     atol: float, optional
         The absolute tolerance for the ODE solver. The default value is 1e-4.
-    function_args: tuple, optional
-        Additional parameters to be passed to the ODE. The default value is None.
 
     returns
     -------
@@ -285,23 +276,15 @@ def shooting(U0, ode, phase_function, ode_solver=solve_to, root_solver=fsolve, a
     '''
     # Check that the initial guess is of the correct form for the ODE
     try:
-        solve_to(ode, 0, U0[:-1], n_max=1, args=function_args)
+        solve_to(ode, 0, U0[:-1], n_max=1)
     except:
-        message = """The initial guess, U0, is not of the correct form. The initial guess should be a 
-        list of the form [y0, y1, ..., yn, T], where y0, y1, ..., yn are the initial conditions 
-        for the ODE and T is the time period. Values given: U0 = {}""".format(U0)
-        raise InputError(message)
+        raise InputError('The initial guess is not of the correct form. The initial guess should be a list of the form [y0, y1, ..., yn, T], where y0, y1, ..., yn are the initial conditions for the ODE and T is the time period.')
 
     try:
-        # TypeError: Value after * must be an iterable, not NoneType
-        phase_function(0, U0[:-1], *function_args)
+        phase_function(0, U0[:-1])
     except:
-        message = """The phase function is not of the correct form. The phase function should take 
-        the same inputs as the ODE. Input provided for U0 = {}""".format(U0)
-        raise FunctionError(message)
-    
-    # TODO: Checks for the ODE solver and root solver
-    # Tests
+        raise FunctionError('The phase function is not of the correct form. The phase function should take the same inputs as the ODE.')
+
 
     # Set up function to optimize
     def shooting_root(initial_guess):
@@ -309,7 +292,7 @@ def shooting(U0, ode, phase_function, ode_solver=solve_to, root_solver=fsolve, a
         Y0 = np.array(initial_guess[:-1])
 
         # Solve the ODE
-        t, y = ode_solver(ode, 0, Y0, tf=T, args=function_args)
+        t, y = solve_to(ode, 0, Y0, tf=T)
 
         # Set up the conditions array
         num_vars = len(initial_guess)
@@ -319,13 +302,13 @@ def shooting(U0, ode, phase_function, ode_solver=solve_to, root_solver=fsolve, a
             conditions[i] = y[-1,i] - Y0[i]        # X(T) - X(0) = 0
 
         # Final condition is the phase function
-        phase_value = phase_function(0, Y0, *function_args)
+        phase_value = phase_function(0, Y0)
         conditions[-1] = phase_value               # dx/dt(T) = 0
 
         return conditions
 
     # TODO: Implement a better root finding algorithm, e.g. particle swarm optimization
-    sol = root_solver(shooting_root, U0)
+    sol = fsolve(shooting_root, U0)
     X0 = np.array(sol[:-1])
     T = sol[-1]
 
