@@ -7,7 +7,7 @@ import numpy as np
 import time
 from Helpers.solvers import solve_to
 
-def plot_phase_plane_2D(t, y):
+def plot_phase_plane_2D(t, y, xsixe=8, ysize=3):
     """
     Plot the phase plane for a 2D ODE.
 
@@ -49,10 +49,21 @@ def plot_phase_plane_2D(t, y):
     ax[1].set_ylabel('y2')
     ax[1].set_aspect('equal', 'box')
 
+    plt.gcf().set_size_inches(xsixe, ysize)
+
+    plt.show()
+
+def plot_continuation(par, x, xsixe=8, ysize=3):
+    plt.plot(par, x, '.-', markersize=2)
+    plt.xlabel('Parameter')
+    plt.ylabel('x')
+    # Size
+    plt.gcf().set_size_inches(xsixe, ysize)
+    
     plt.show()
 
 
-def animate_PDE(bvp, u, t):
+def animate_PDE(bvp, u, t, xsixe=8, ysize=3):
     """
     Function to animate PDE solution. Only works in Jupyter Notebook.
 
@@ -88,6 +99,8 @@ def animate_PDE(bvp, u, t):
 
     print('Animating...')
     fig = plt.figure()
+    # Size
+    plt.gcf().set_size_inches(xsixe, ysize)
     ax = plt.axes(xlim=(bvp.a, bvp.b), ylim=(-u.max(), u.max()))
     line, = ax.plot([], [], lw=2)
 
@@ -302,6 +315,45 @@ def visualise_rk4_vs_euler(t_rk4, y_rk4, t_euler, y_euler, y_a):
     plt.show()
 
 
+def visualise_rk4(t, y, y_a, xsixe=8, ysize=3):
+    """
+    Visualise the results of the RK4 and Euler methods. Plots the solution
+    against time and the solution against its derivative.
+
+    Parameters
+    ----------
+    t : array
+        The time array for the RK4 method.
+    y : array
+        The solution array for the RK4 method.
+    y_a : array
+        The analytical solution.
+
+    Returns
+    -------
+    None.
+
+    """
+    # Create subplots
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+
+    # Plot results: y vs t
+    ax1.plot(t, y[:, 0], label='RK4', linewidth=3)
+    ax1.plot(t, y_a, '--', label='Analytical', linewidth=3)
+    ax1.set(xlabel='t', ylabel='y')
+    ax1.legend()
+
+    # # Plot results: y vs y'
+    ax2.plot(y[:, 0], y[:, 1], label='RK4', linewidth=3)
+    ax2.set(xlabel='y', ylabel='dy/dt')
+    ax2.legend()
+
+    plt.gcf().set_size_inches(xsixe, ysize)
+
+    plt.show()
+
+
+
 def plot_time_series(timeSeries, b_args):
     """
     Plot the time series for each b value. Plots x(t) and y(t) on the left and y(t) vs x(t) on the right.
@@ -331,10 +383,11 @@ def plot_time_series(timeSeries, b_args):
         axs[i, 1].set_aspect('equal')
         axs[i, 1].set_xlabel('x')
         axs[i, 1].set_ylabel('y')
+    # Plot size
     plt.show()
 
 
-def plot_bvp(bvp, u_linear, u_analytical):
+def plot_bvp(bvp, u_linear, u_analytical, xsixe=8, ysize=3):
     """
     Plot the solution of the BVP and the analytical solution.
 
@@ -356,10 +409,12 @@ def plot_bvp(bvp, u_linear, u_analytical):
     plt.legend()
     plt.xlabel('x')
     plt.ylabel('u(x)')
+    plt.gcf().set_size_inches(xsixe, ysize)
+
     plt.show()
 
 
-def plot_max_u_vs_C(Cs, all_u):
+def plot_max_u_vs_C(Cs, all_u, xsixe=8, ysize=3):
     """
     Plot the maximum value of u(x) vs C.
 
@@ -379,4 +434,8 @@ def plot_max_u_vs_C(Cs, all_u):
     plt.plot(Cs[max_u != 0], max_u[max_u != 0])
     plt.xlabel('C')
     plt.ylabel('Maximum value of u(x)')
+    plt.gcf().set_size_inches(xsixe, ysize)
+
     plt.show()
+
+
