@@ -1,5 +1,6 @@
 from scipy.optimize import fsolve
 import numpy as np
+import warnings
 
 # Custom exceptions
 class InputError(Exception):
@@ -194,6 +195,10 @@ def solve_to(fun, t0, y0, tf=None, n_max=None, method='RK4', deltat_max=0.01, ar
 
             if tf <= t0:
                 raise ValueError('tf must be greater than t0. Values given: t0 = {}, tf = {}.'.format(t0, tf))
+            
+            if tf < 0.001 and method == rk4_step.__name__:
+                warnings.warn('A step size ({}) of less than 0.001 is not recommended for the RK4 method. Possible rounding errors may occur.'.format(h))
+
         except TypeError:
             raise ValueError('tf must be a float or int. Value given: {}. Type: {}'.format(tf, type(tf)))
 
