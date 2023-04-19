@@ -160,7 +160,7 @@ def bvp_continuation(bvp, C_start, C_end, N_C, q_base, method='natural_parameter
         bvp.q_fun = q
     
         u_guess = np.zeros(bvp.N-1)    
-        u_array, success = bvp.solve_bvp(u_guess, 'nonlinear')
+        u_array, success = bvp.solve_ODE(u_guess, 'nonlinear')
 
         if success:
             all_u[Cs == C, :] = u_array

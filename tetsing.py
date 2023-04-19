@@ -9,6 +9,6 @@ q_fun = lambda x, u: 0
 
 bvp = BVP(a, b, N, alpha, beta, condition_type=condition_type, q_fun=q_fun)
 
-u = bvp.solve_bvp()
+u = bvp.solve_ODE()
 
 %%

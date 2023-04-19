@@ -85,7 +85,7 @@ class TestBVP(unittest.TestCase):
 
         bvp = BVP(a, b, n, alpha, beta, condition_type=condition_type, q_fun=q_fun)
         
-        u_DD, success = bvp.solve_bvp()
+        u_DD, success = bvp.solve_ODE()
         
         y_n1 = -9.8*bvp.dx**2 + 2*u_DD[0] - u_DD[1]
         
@@ -166,7 +166,7 @@ class TestBVP(unittest.TestCase):
         
         assert np.isclose(numeric, exact, atol=1e-2)
 
-    def test_solve_bvp_1(self):
+    def test_solve_ODE_1(self):
         a = 0
         b = 1
         N = 10
@@ -175,9 +175,9 @@ class TestBVP(unittest.TestCase):
         condition_type = 'Dirichlet'
         q_fun = lambda x, u: 1
         bvp = BVP(a, b, N, alpha, beta, condition_type=condition_type, q_fun=q_fun)
-        u_tridiag, success = bvp.solve_bvp(method='tridiagonal')
-        u_linear, success = bvp.solve_bvp(method='linear')
-        u_nonlinear, success = bvp.solve_bvp(method='nonlinear')
+        u_tridiag, success = bvp.solve_ODE(method='tridiagonal')
+        u_linear, success = bvp.solve_ODE(method='linear')
+        u_nonlinear, success = bvp.solve_ODE(method='nonlinear')
         def u_analytic(x):
             return -1/2 * (x - a) * (x - b) + ((beta - alpha) / (b - a)) * (x - a) + alpha
         x_values = bvp.x_values
