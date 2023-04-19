@@ -351,8 +351,32 @@ def plot_bvp(bvp, u_linear, u_analytical):
     -------
     None.
     """
-    fig, ax = plt.subplots()
-    ax.plot(bvp.x_values, u_linear, label='Numerical solution')
-    ax.plot(bvp.x_values, u_analytical, label='Analytic solution', linestyle='--')
-    ax.legend()
+    plt.plot(bvp.x_values, u_linear, label='Numerical solution')
+    plt.plot(bvp.x_values, u_analytical, label='Analytic solution', linestyle='--')
+    plt.legend()
+    plt.xlabel('x')
+    plt.ylabel('u(x)')
+    plt.show()
+
+
+def plot_max_u_vs_C(Cs, all_u):
+    """
+    Plot the maximum value of u(x) vs C.
+
+    Parameters
+    ----------
+    all_u : array
+        The solution array for all C values.
+    Cs : array
+        The array of C values.
+
+    Returns
+    -------
+    None.
+    """
+    max_u = np.max(all_u, axis=1)
+
+    plt.plot(Cs[max_u != 0], max_u[max_u != 0])
+    plt.xlabel('C')
+    plt.ylabel('Maximum value of u(x)')
     plt.show()
