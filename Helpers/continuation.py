@@ -22,6 +22,15 @@ def continuation(ode, x0, param_current, variation_param, step_size, max_steps, 
         Maximum number of steps to take.
     method : str, optional
         Method to use for continuation. The default is 'parameter continuation'.
+
+    Returns
+    -------
+    x_sol : list
+        List of solutions.
+    par_sol : list
+        List of parameters.
+    dpars : list
+        List of parameter steps.
     """        
 
     param_current[variation_param] = param_current[variation_param]
@@ -40,10 +49,7 @@ def continuation(ode, x0, param_current, variation_param, step_size, max_steps, 
 
             condition1 = x
 
-            if method == 'arc-length continuation' and len(x_sol) >= 2:
-                condition2 = (X_current - X_next) * delta_X + (param_current[variation_param] - b_next) * delta_param
-            else:
-                condition2 = b_next - param_current[variation_param]
+            condition2 = b_next - param_current[variation_param]
 
             return np.array([condition1, condition2])
         
@@ -54,14 +60,12 @@ def continuation(ode, x0, param_current, variation_param, step_size, max_steps, 
         X_current, param_current[variation_param] = sol
         converged = fs[2] == 1
 
-
         if converged:
             x_sol.append(X_current)
             par_sol.append(param_current[variation_param])
 
-
         # Update the initial guess for the next step based on previous two solutions
-        if len(x_sol) >= 5:
+        if len(x_sol) >= 3 and method == 'arc-length continuation':
             # Find delta
             delta_param = param_current[variation_param] - param_previous
             dpars.append(delta_param)
@@ -103,7 +107,6 @@ plt.ylabel('x')
 plt.grid()
 plt.show()
 
-from Helpers.solvers import shooting, solve_to
 
 # import matplotlib.pyplot as plt
 # from scipy.optimize import fsolve
