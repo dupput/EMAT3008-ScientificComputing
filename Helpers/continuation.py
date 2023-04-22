@@ -2,7 +2,12 @@ import matplotlib.pyplot as plt
 from scipy.optimize import fsolve
 import numpy as np
 
-def simple_continuation(function, x0, param_current, variation_param, step_size, max_steps, method='parameter continuation'):
+# Create NotImplemetedError for arc-length continuation
+class NotImplementedError(Exception):
+    pass
+
+
+def simple_continuation(function, x0, paremeter_current, variation_parameter, step_size, max_steps, method='parameter continuation'):
     """
     Performs natural parameter continuation for a function of the form f(t, x, b).
 
@@ -12,9 +17,9 @@ def simple_continuation(function, x0, param_current, variation_param, step_size,
         Function to be undergo continuation.
     x0 : float
         Initial condition for the ODE.
-    param_current : list
+    paremeter_current : list
         List of parameters for the ODE.
-    variation_param : int
+    variation_parameter : int
         Index of the parameter to be varied.
     step_size : float
         Step size for the continuation.
@@ -25,9 +30,9 @@ def simple_continuation(function, x0, param_current, variation_param, step_size,
 
     Returns
     -------
-    x_sol : list
+    x_solutions : list
         List of solutions.
-    par_sol : list
+    paremeter_solutions : list
         List of parameters.
     dpars : list
         List of parameter steps.
@@ -37,16 +42,16 @@ def simple_continuation(function, x0, param_current, variation_param, step_size,
     >>> func = lambda t, x, c: [t, x**3 - x + c]
     >>> x0 = 1
     >>> par0 = [-3]
-    >>> vary_par = 0
+    >>> variation_parameter = 0
     >>> step_size = 0.01
     >>> max_steps = 2000
-    >>> x, par, dpars = simple_continuation(func, x0, par0, vary_par, step_size, max_steps)
+    >>> x, parameters, delta_parameters = simple_continuation(func, x0, par0, variation_parameter, step_size, max_steps)
     """        
 
-    param_current[variation_param] = param_current[variation_param]
-    guess = np.array([x0, param_current[variation_param]])
-    x_sol = []
-    par_sol = []
+    paremeter_current[variation_parameter] = paremeter_current[variation_parameter]
+    guess = np.array([x0, paremeter_current[variation_parameter]])
+    x_solutions = []
+    paremeter_solutions = []
     dpars = []
 
     step = 0
@@ -59,7 +64,7 @@ def simple_continuation(function, x0, param_current, variation_param, step_size,
 
             condition1 = x
 
-            condition2 = b_next - param_current[variation_param]
+            condition2 = b_next - paremeter_current[variation_parameter]
 
             return np.array([condition1, condition2])
         
@@ -67,21 +72,21 @@ def simple_continuation(function, x0, param_current, variation_param, step_size,
 
         # Extract the solution and check if the solver converged
         sol = fs[0]
-        X_current, param_current[variation_param] = sol
+        X_current, paremeter_current[variation_parameter] = sol
         converged = fs[2] == 1
 
         if converged:
-            x_sol.append(X_current)
-            par_sol.append(param_current[variation_param])
+            x_solutions.append(X_current)
+            paremeter_solutions.append(paremeter_current[variation_parameter])
 
         # Update the initial guess for the next step based on previous two solutions
-        if len(x_sol) >= 3 and method == 'arc-length continuation':
+        if len(x_solutions) >= 3 and method == 'arc-length continuation':
             # Find delta
-            delta_param = param_current[variation_param] - param_previous
+            delta_param = paremeter_current[variation_parameter] - param_previous
             dpars.append(delta_param)
             # Update b_i and b_i-1
-            param_previous = param_current[variation_param]
-            param_current[variation_param] += delta_param
+            param_previous = paremeter_current[variation_parameter]
+            paremeter_current[variation_parameter] += delta_param
 
             delta_X = X_current - X_previous
             X_previous = X_current
@@ -93,15 +98,14 @@ def simple_continuation(function, x0, param_current, variation_param, step_size,
             X_previous = X_current
             X_current -= step_size
 
-            param_previous = param_current[variation_param]
-            param_current[variation_param] += step_size
+            param_previous = paremeter_current[variation_parameter]
+            paremeter_current[variation_parameter] += step_size
 
 
-        guess = np.array([X_current, param_current[variation_param]])
+        guess = np.array([X_current, paremeter_current[variation_parameter]])
         step += 1
 
-    return x_sol, par_sol, dpars
-
+    return x_solutions, paremeter_solutions
 
 def bvp_continuation(bvp, C_start, C_end, N_C, q_base, method='natural_parameter_estimation'):
     """
@@ -146,27 +150,42 @@ def bvp_continuation(bvp, C_start, C_end, N_C, q_base, method='natural_parameter
     >>> Cs, all_u = bvp_continuation(bvp, 0, 4, 200, q_base)
     """
 
+    # Validate input parameters
+    if N_C <= 0:
+        raise ValueError('N_C must be a positive integer.')
+    if C_start >= C_end:
+        raise ValueError('C_start must be less than C_end.')
+
+    # Choose method for continuation
     if method == 'natural_parameter_estimation':
         Cs = np.linspace(C_start, C_end, N_C)
+    elif method == 'arc-length continuation':
+        raise NotImplementedError('Arc-length continuation is not yet implemented.')
+    else:
+        raise ValueError('Method must be either "natural_parameter_estimation" or "arc-length continuation".')
 
-    # Initalize arrays to determine sizes
-    bvp.construct_matrix()      
+    # Initialize arrays to determine sizes
+    bvp.construct_matrix()
     u_array = np.ones(bvp.shape)
     all_u = np.zeros((N_C, bvp.N+1))
 
+    # Perform continuation for each value of C
     for C in Cs:
         # Redefine the q function with the new value of C in terms of q
         q = lambda x, u: q_base(x, u, C)
         bvp.q_fun = q
-    
-        u_guess = np.zeros(bvp.N-1)    
+
+        # Initialize the guess for the solution
+        u_guess = np.zeros(bvp.N-1)
+        
+        # Solve the ODE with the current value of C
         u_array, success = bvp.solve_ODE(u_guess, 'nonlinear')
 
+        # Store the solution if successful
         if success:
             all_u[Cs == C, :] = u_array
-            
-    return Cs, all_u
 
+    return Cs, all_u
 
 
 if __name__ == '__main__':
