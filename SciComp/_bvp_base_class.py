@@ -9,6 +9,7 @@ class FunctionError(Exception):
     """Exception raised for errors in the function."""
     pass
 
+
 class base_BVP():
     """
     Class for solving boundary value problems.
@@ -340,7 +341,7 @@ class base_BVP():
         return A, b, x_array
 
 
-    def time_discretization(self, t_boundary, t_final, dt=None, C=None):
+    def time_discretization(self, t_boundary, t_final, method, dt=None, C=None):
         """
         Function to discretize time from t_boundary to t_final. Either dt or C must be provided, and the other will be calculated.
 
@@ -350,6 +351,8 @@ class base_BVP():
             Initial time.
         t_final : float
             Final time.
+        method : str
+            Method to use for PDE. Determines if warning is raised for Courant number.
         dt : float, optional
             Time step. The default is None.
         C : float, optional
@@ -365,11 +368,7 @@ class base_BVP():
             Courant number.
         """
         # Work out the time step or Courant number
-        if dt is None and C is None:
-            raise ValueError('Either dt or C must be provided')
-        elif dt is not None and C is not None:
-            raise ValueError('Only one of dt or C must be provided')
-        elif dt is not None:
+        if dt is not None:
             self.dt = dt
             self.C = self.D * dt / self.dx**2
         elif C is not None:
@@ -378,10 +377,11 @@ class base_BVP():
         C = self.C
         dt = self.dt
 
-        if C > 0.5:
-            # Raise warning
-            warnings.warn('C = D * dt / dx^2 = {} > 0.5. The solution may be unstable.'.format(C))
-        
+        if method == 'Scipy Solver' or 'Explicit Euler':
+            if C > 0.5:
+                # Raise warning
+                warnings.warn('C = D * dt / dx^2 = {} > 0.5. The solution may be unstable.'.format(C))
+            
         N_time = ceil((t_final - t_boundary) / dt)
         t = dt * np.arange(N_time + 1) + t_boundary
         return t, dt, C

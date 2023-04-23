@@ -164,6 +164,14 @@ class BVP(base_BVP):
         if not isinstance(dt, (int, float, type(None))):
             raise TypeError('dt must be a number')
 
+        if dt is None and C is None:
+            raise ValueError('Either dt or C must be provided')
+        elif dt is not None and C is not None:
+            raise ValueError('Only one of dt or C must be provided')
+
+        # Discretize time
+        t, dt, C = self.time_discretization(t_boundary, t_final, dt=dt, C=C, method=method)
+
         # Method check. Imports are from _pde_solvers.py
         METHODS = {'Scipy Solver' : scipy_solver,
                    'Explicit Euler': explicit_euler,
@@ -173,9 +181,6 @@ class BVP(base_BVP):
             raise ValueError('Invalid method: {}. Method must be one of {}.'.format(method, METHODS.keys()))
         else:
             method = METHODS[method]
-
-        # Discretize time
-        t, dt, C = self.time_discretization(t_boundary, t_final, dt=dt, C=C)
 
         # Solve the PDE
         u = method(self, t)
