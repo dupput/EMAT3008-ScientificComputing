@@ -1,9 +1,9 @@
 import unittest   # The test framework
 import numpy as np
 try:
-    from Helpers.solvers import solve_to, shooting, InputError, FunctionError
+    from Helpers.ivp import solve_to, shooting, InputError, FunctionError
 except:
-    from solvers import solve_to, shooting, InputError, FunctionError
+    from ivp import solve_to, shooting, InputError, FunctionError
 
 class Test_solve_to(unittest.TestCase):
     def __init__(self, *args, **kwargs):
