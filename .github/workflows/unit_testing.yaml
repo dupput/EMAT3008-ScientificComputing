@@ -16,7 +16,7 @@ jobs:
           pip install -r requirements.txt
       - name: Run unit tests
         run: |
-          python -m Helpers.solvers_unittests
-          python -m Helpers.plotting_unittests
-          python -m Helpers.bvp_unittests
-          python -m Helpers.continuation_unittests
+          python -m tests.solvers_unittests
+          python -m tests.plotting_unittests
+          python -m tests.bvp_unittests
+          python -m tests.continuation_unittests
