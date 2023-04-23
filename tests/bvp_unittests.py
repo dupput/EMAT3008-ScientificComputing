@@ -8,7 +8,8 @@ import os
 current_file_directory = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.join(current_file_directory, ".."))
 
-from SciComp.bvp import BVP, InputError
+from SciComp.bvp import BVP
+
 class TestBVP(unittest.TestCase):
     def test_boundary_conditions_Dirichlet(self):
         a = 0
@@ -16,7 +17,7 @@ class TestBVP(unittest.TestCase):
         alpha = 0
         N = 100
         
-        with self.assertRaises(InputError):
+        with self.assertRaises(ValueError):
             BVP(a, b, N, alpha, condition_type='Dirichlet')
 
     def test_boundary_conditions_Neumann(self):
@@ -25,7 +26,7 @@ class TestBVP(unittest.TestCase):
         alpha = 0
         N = 100
         
-        with self.assertRaises(InputError):
+        with self.assertRaises(ValueError):
             BVP(a, b, N, alpha, condition_type='Neumann')
 
     def test_boundary_conditions_Robin(self):
@@ -34,7 +35,7 @@ class TestBVP(unittest.TestCase):
         alpha = 0
         N = 100
         
-        with self.assertRaises(InputError):
+        with self.assertRaises(ValueError):
             BVP(a, b, N, alpha, condition_type='Robin')
 
     def test_inputs_a(self):
@@ -44,7 +45,7 @@ class TestBVP(unittest.TestCase):
         beta = 0
         N = 100
         
-        with self.assertRaises(InputError):
+        with self.assertRaises(ValueError):
             BVP(a, b, N, alpha, beta, condition_type='Dirichlet')
 
     def test_inputs_b(self):
@@ -54,7 +55,7 @@ class TestBVP(unittest.TestCase):
         beta = 0
         N = 100
         
-        with self.assertRaises(InputError):
+        with self.assertRaises(ValueError):
             BVP(a, b, N, alpha, beta, condition_type='Dirichlet')
 
     def test_inputs_N(self):
@@ -64,7 +65,7 @@ class TestBVP(unittest.TestCase):
         beta = 0
         N = 3.5
         
-        with self.assertRaises(InputError):
+        with self.assertRaises(ValueError):
             BVP(a, b, N, alpha, beta, condition_type='Dirichlet')
     
 
@@ -75,7 +76,7 @@ class TestBVP(unittest.TestCase):
         beta = 0
         N = -2
         
-        with self.assertRaises(InputError):
+        with self.assertRaises(ValueError):
             BVP(a, b, N, alpha, beta, condition_type='Dirichlet')
 
     
@@ -186,6 +187,28 @@ class TestBVP(unittest.TestCase):
         u_analytic = u_analytic(x_values)
         # Assert that the solutions are the same
         assert np.allclose(u_tridiag, u_linear, u_nonlinear, u_analytic)
+
+    def test_solve_ODE_2(self):
+        a = 0
+        b = 1
+        N = 10
+        alpha = 0
+        beta = 10
+        condition_type = 'Dirichlet'
+        q_fun = lambda x, u: 0
+
+        bvp = BVP(a, b, N, alpha, beta, condition_type=condition_type, q_fun=q_fun)
+        u, success = bvp.solve_ODE()
+
+        def u_analytic(x):
+            return (beta - alpha) / (b - a) * (x - a) + alpha
+
+        x_values = bvp.x_values
+        u_analytic = u_analytic(x_values)
+
+        # Assert that the solutions are the same
+        assert np.allclose(u, u_analytic)
+
 
     def setUp(self):
         # Initialize a BVP instance with the given parameters

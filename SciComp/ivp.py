@@ -14,8 +14,6 @@ class FunctionError(Exception):
     pass
 
 
-
-
 def solve_to(fun, t0, y0, tf=None, n_max=None, method='RK4', deltat_max=0.01, args=None):
     """Solve an ordinary differential equation.
 
