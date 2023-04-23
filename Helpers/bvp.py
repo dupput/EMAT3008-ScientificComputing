@@ -111,6 +111,25 @@ class BVP:
             raise ValueError('condition_type must be either Dirichlet or Neumann or Robin')
 
 
+    def check_interval(self):
+        """
+        Check that a and b are numbers and that a < b.
+        """
+        if not isinstance(self.a, (int, float)) or not isinstance(self.b, (int, float)):
+            raise TypeError("Both a and b must be numbers.")
+            
+        if self.a >= self.b:
+            raise ValueError("The value of a must be less than b. a = {}, b = {}".format(self.a, self.b))
+
+
+    def check_number_of_points(self):
+        """
+        Check that N is a positive integer.
+        """
+        if not isinstance(self.N, int) or self.N <= 0:
+            raise ValueError("N must be a positive integer. N = {}".format(self.N))
+
+
     def check_functions(self):
         """
         Check that q_fun and f_fun are functions.

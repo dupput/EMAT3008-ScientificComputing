@@ -204,9 +204,11 @@ class TestBVP(unittest.TestCase):
         with self.assertRaises(TypeError):
             self.bvp.solve_PDE(0, 2, dt='0.1')
 
-    def test_method_value_error(self):
+
+    def test_method_value_error(self):  
         with self.assertRaises(ValueError):
             self.bvp.solve_PDE(0, 2, method='InvalidMethod')
+
 
     def test_methods(self):
         methods = ['Scipy Solver', 'Explicit Euler', 'Implicit Euler', 'Crank-Nicolson']
@@ -227,6 +229,21 @@ class TestBVP(unittest.TestCase):
         u1, t1, dt1, C1 = self.bvp.solve_PDE(0, 2, dt=None, C=0.5)
         u2, t2, dt2, C2 = self.bvp.solve_PDE(0, 2, dt=None, C=1)
         self.assertNotEqual(C1, C2)
+
+    def test_constructor(self):
+        instance = BVP(a=0, b=1, N=10, alpha=1, beta=0, condition_type='Dirichlet')
+        self.assertEqual(instance.a, 0)
+        self.assertEqual(instance.b, 1)
+        self.assertEqual(instance.N, 10)
+        self.assertEqual(instance.alpha, 1)
+
+    def test_invalid_interval(self):
+        with self.assertRaises(ValueError):
+            BVP(a=1, b=0, N=10, alpha=1)
+
+    def test_invalid_number_of_points(self):
+        with self.assertRaises(ValueError):
+            BVP(a=0, b=1, N=-1, alpha=1)
         
 
 
