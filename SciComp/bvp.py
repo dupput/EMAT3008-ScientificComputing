@@ -188,28 +188,3 @@ class BVP(base_BVP):
         u = self.concatanate(u, type='PDE', t=t)
         return u, t, dt, C    
     
-
-if __name__ == '__main__':
-    # from SciComp.bvp import BVP
-    # from SciComp.plotting import animate_PDE
-    import numpy as np
-
-    # Fisher-KPP problem
-    a = 0
-    b = 20
-    N = 100
-    alpha = 1
-    delta = 0
-    condition_type = 'Neumann'
-    D = 0.1
-    r = 2
-    f_fun = lambda x, t: np.zeros(len(x))
-    q_fun = lambda x, u: r*u*(1-u)
-
-    bvp = BVP(a, b, N, alpha=alpha, delta=delta, condition_type=condition_type, f_fun=f_fun, q_fun=q_fun, D=D)
-
-    C = 0.4
-    t_boundary = 0
-    t_final = 20
-
-    u = bvp.solve_PDE(t_boundary, t_final, C=C, method='Crank-Nicolson')
