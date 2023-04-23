@@ -115,11 +115,10 @@ class TestBVP(unittest.TestCase):
         dt = 0.0001
         t_final = 2
 
-        t, dt, C = bvp.time_discretization(t_boundary, t_final, dt)
-        solution = bvp.explicit_euler(t)
+        u, t, dt, C = bvp.solve_PDE(t_boundary, t_final, dt=dt, method='Explicit Euler')
 
         idx = np.where(bvp.x_values == 0.5)[0][0]
-        numeric = solution[idx, -1]
+        numeric = u[idx, -1]
         
         assert np.isclose(numeric, exact, atol=1e-2)
 
@@ -139,11 +138,10 @@ class TestBVP(unittest.TestCase):
         dt = 0.0001
         t_final = 2
 
-        t, dt, C = bvp.time_discretization(t_boundary, t_final, dt)
-        solution = bvp.implicit_euler(t)
+        u, t, dt, C = bvp.solve_PDE(t_boundary, t_final, dt=dt, method='Implicit Euler')
 
         idx = np.where(bvp.x_values == 0.5)[0][0]
-        numeric = solution[idx, -1]
+        numeric = u[idx, -1]
         
         assert np.isclose(numeric, exact, atol=1e-2)
 
@@ -163,8 +161,7 @@ class TestBVP(unittest.TestCase):
         dt = 0.0001
         t_final = 2
 
-        t, dt, C = bvp.time_discretization(t_boundary, t_final, dt)
-        solution = bvp.crank_nicolson(t)
+        solution, t, dt, C = bvp.solve_PDE(t_boundary, t_final, dt=dt, method='Crank-Nicolson')
 
         idx = np.where(bvp.x_values == 0.5)[0][0]
         numeric = solution[idx, -1]

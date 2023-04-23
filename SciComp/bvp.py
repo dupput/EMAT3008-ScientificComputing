@@ -1,8 +1,9 @@
 from math import ceil 
 import numpy as np
 from scipy.optimize import root
-from scipy.integrate import solve_ivp
 import warnings
+
+from SciComp._pde_solvers import *
 
 class InputError(Exception):
     """Exception raised for errors in the input."""
@@ -553,135 +554,6 @@ class BVP:
     
 
     # -------------------------- PDE Solvers -------------------------- #
-    def scipy_solver(self, t):
-        """
-        Function to solve the PDE using Scipy's solve_ivp.
-
-        Parameters
-        ----------
-        t : numpy.ndarray
-            Array of time values.
-        t_boundary : float
-            Initial time.
-
-        Returns
-        -------
-        u : numpy.ndarray
-            Solution to the PDE.
-        """
-        A, b, x_array = self.construct_matrix()
-        
-        u_boundary = self.f_fun(x_array, t[0])
-
-        if self.q_fun is None:
-            def PDE(t, u, D, A, b):
-                return D / self.dx ** 2 * (A @ u + b)
-        else:
-            def PDE(t, u, D, A, b):
-                return D / self.dx ** 2 * (A @ u + b) + self.q_fun(x_array, u)  
-
-        sol = solve_ivp(PDE, (t[0], t[-1]), u_boundary, method='RK45', t_eval=t, args=(self.D, A, b))
-
-        u = sol.y
-
-        return u
-    
-
-    def explicit_euler(self, t):
-        """
-        Function to solve the PDE using the explicit Euler method.
-
-        Parameters
-        ----------
-        t : numpy.ndarray
-            Array of time values.
-
-        Returns
-        -------
-        solution : numpy.ndarray
-            Solution to the PDE.
-        """
-        A, b, x_array = self.construct_matrix()
-
-        u = np.zeros((len(x_array), len(t)))
-        u[:, 0] = self.f_fun(x_array, t[0])
-        u[0, :] = self.alpha
-        u[-1, :] = self.beta
-
-        # Loop over time
-        for ti in range(0, len(t)-1):
-            for xi in range(1, len(x_array)-1):
-                if xi == 0:
-                    # u[0, ti+1] = u[0, ti] + self.C * (self.alpha - 2 * u[0, ti] + u[1, ti])
-                    u[xi, ti+1] = self.alpha
-                elif xi > 0 and xi < self.N:
-                    u[xi, ti+1] = u[xi, ti] + self.C * (u[xi-1, ti] - 2 * u[xi, ti] + u[xi+1, ti])
-                else:
-                    u[xi, ti+1] = u[xi, ti] + self.C * (self.beta - 2 * u[xi, ti] + u[xi-1, ti])
-
-        return u
-    
-
-    def implicit_euler(self, t):
-        """
-        Function to solve the PDE using the implicit Euler method.
-
-        Parameters
-        ----------
-        t : numpy.ndarray
-            Array of time values.
-
-        Returns
-        -------
-        solution : numpy.ndarray
-            Solution to the PDE.
-        """
-        A, b, x_array = self.construct_matrix()
-
-        I = np.eye(self.shape)
-
-        lhs = I - self.C * A
-        rhs = self.C * b
-
-        u = np.zeros((len(x_array), len(t)))
-        u[:, 0] = self.f_fun(x_array, t[0])
-
-        for ti in range(0, len(t)-1):
-            u[:, ti+1] = np.linalg.solve(lhs, u[:, ti] + rhs)
-
-        return u
-    
-
-    def crank_nicolson(self, t):
-        """
-        Function to solve the PDE using the Crank-Nicolson method.
-
-        Parameters
-        ----------
-        t : numpy.ndarray
-            Array of time values.
-
-        Returns
-        -------
-        solution : numpy.ndarray
-            Solution to the PDE.
-        """
-        A, b, x_array = self.construct_matrix()
-
-        I = np.eye(self.shape)
-
-        lhs = I - self.C * A / 2
-        rhs = I + self.C * A / 2
-
-        u = np.zeros((len(x_array), len(t)))
-        u[:, 0] = self.f_fun(x_array, t[0])
-
-        for ti in range(0, len(t)-1):
-            u[:, ti+1] = np.linalg.solve(lhs, rhs @ u[:, ti] + self.C * b)
-
-        return u
-    
-    
     def time_discretization(self, t_boundary, t_final, dt=None, C=None):
         """
         Function to discretize time from t_boundary to t_final. Either dt or C must be provided, and the other will be calculated.
@@ -783,11 +655,11 @@ class BVP:
         if not isinstance(dt, (int, float, type(None))):
             raise TypeError('dt must be a number')
 
-        # Method check
-        METHODS = {'Scipy Solver' : self.scipy_solver,
-                   'Explicit Euler': self.explicit_euler,
-                   'Implicit Euler': self.implicit_euler,
-                   'Crank-Nicolson': self.crank_nicolson}
+        # Method check. Imports are from _pde_solvers.py
+        METHODS = {'Scipy Solver' : scipy_solver,
+                   'Explicit Euler': explicit_euler,
+                   'Implicit Euler': implicit_euler,
+                   'Crank-Nicolson': crank_nicolson}
         if method not in METHODS:
             raise ValueError('Invalid method: {}. Method must be one of {}.'.format(method, METHODS.keys()))
         else:
@@ -797,7 +669,7 @@ class BVP:
         t, dt, C = self.time_discretization(t_boundary, t_final, dt=dt, C=C)
 
         # Solve the PDE
-        u = method(t)
+        u = method(self, t)
 
         u = self.concatanate(u, type='PDE', t=t)
         return u, t, dt, C
