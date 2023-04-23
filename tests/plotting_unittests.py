@@ -1,7 +1,14 @@
 import unittest   # The test framework
 import numpy as np
 
-from Helpers.plotting import plot_phase_plane_2D
+import sys
+import os
+
+# Add SciComp to path
+current_file_directory = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(os.path.join(current_file_directory, ".."))
+
+from SciComp.plotting import plot_phase_plane_2D
 
 
 class Test_plot_phase_plane_2D(unittest.TestCase):

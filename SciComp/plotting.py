@@ -5,7 +5,7 @@ from plotly.subplots import make_subplots
 from math import ceil
 import numpy as np
 import time
-from Helpers.ivp import solve_to
+from SciComp.ivp import solve_to
 
 def plot_phase_plane_2D(t, y, xsixe=8, ysize=3):
     """

@@ -1,11 +1,15 @@
 import unittest
 import numpy as np
-try:
-    from Helpers.bvp import BVP
-    from Helpers.continuation import bvp_continuation
-except:
-    from bvp import BVP
-    from continuation import bvp_continuation
+
+import sys
+import os
+
+# Add SciComp to path
+current_file_directory = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(os.path.join(current_file_directory, ".."))
+
+from SciComp.bvp import BVP
+from SciComp.continuation import bvp_continuation
 
 class TestBVPContinuation(unittest.TestCase):
 

@@ -849,8 +849,8 @@ class BVP:
 
 
 if __name__ == '__main__':
-    # from Helpers.bvp import BVP
-    # from Helpers.plotting import animate_PDE
+    # from SciComp.bvp import BVP
+    # from SciComp.plotting import animate_PDE
     import numpy as np
 
     # Fisher-KPP problem

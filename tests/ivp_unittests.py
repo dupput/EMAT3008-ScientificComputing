@@ -1,9 +1,14 @@
 import unittest   # The test framework
 import numpy as np
-try:
-    from Helpers.ivp import solve_to, shooting, InputError, FunctionError
-except:
-    from ivp import solve_to, shooting, InputError, FunctionError
+    
+import sys
+import os
+
+# Add SciComp to path
+current_file_directory = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(os.path.join(current_file_directory, ".."))
+
+from SciComp.ivp import solve_to, shooting, InputError, FunctionError
 
 class Test_solve_to(unittest.TestCase):
     def __init__(self, *args, **kwargs):
