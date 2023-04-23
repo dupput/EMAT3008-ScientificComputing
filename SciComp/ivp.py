@@ -234,7 +234,7 @@ def solve_to(fun, t0, y0, tf=None, n_max=None, method='RK4', deltat_max=0.01, ar
     return np.array(t_array), np.array(y_array)
 
 
-def shooting(U0, ode, phase_function, atol=1e-8):
+def shooting(U0, ode, phase_function, ode_solver=solve_to, root_solver=fsolve, atol=1e-8, function_args=None):
     '''
     Shooting method for solving boundary value problems. 
     
@@ -250,8 +250,18 @@ def shooting(U0, ode, phase_function, atol=1e-8):
         The phase function for the ODE. The function should take the same inputs as the ODE. The phase
         function is used to determine the differential at the start of the ODE and should be zero at
         the end of the ODE.
+    ode_solver: function, optional
+        The ODE solver to be used. The solver should take the form solver(ode, t0, y0, tf, *args), where
+        ode is the ODE to be solved, t0 is the initial time, y0 is the initial condition, tf is the
+        final time, and *args are the parameters of the ODE. The default value is solve_to.
+    root_solver: function, optional
+        The optimization solver to be used. The solver should take the form solver(fun, x0), where
+        fun is the function to be minimized and x0 is the initial guess.
     atol: float, optional
         The absolute tolerance for the ODE solver. The default value is 1e-4.
+    function_args: tuple, optional
+        Additional parameters to be passed to the ODE. The default value is None. Must be the same 
+        parameters for both the ODE and the phase function.
 
     returns
     -------
@@ -276,15 +286,37 @@ def shooting(U0, ode, phase_function, atol=1e-8):
     '''
     # Check that the initial guess is of the correct form for the ODE
     try:
-        solve_to(ode, 0, U0[:-1], n_max=1)
+        solve_to(ode, 0, U0[:-1], n_max=1, args=function_args)
     except:
-        raise InputError('The initial guess is not of the correct form. The initial guess should be a list of the form [y0, y1, ..., yn, T], where y0, y1, ..., yn are the initial conditions for the ODE and T is the time period.')
+        message = """The initial guess, U0, is not of the correct form. The initial guess should be a 
+        list of the form [y0, y1, ..., yn, T], where y0, y1, ..., yn are the initial conditions 
+        for the ODE and T is the time period. Values given: U0 = {}""".format(U0)
+        raise InputError(message)
+
+    # args checks
+    if function_args is not None:
+        # Wrap the phase_function in lambdas to pass through additional parameters.
+        try:
+            _ = [*(function_args)]
+        except TypeError as exp:
+            suggestion_tuple = (
+                "Supplied 'function_args' cannot be unpacked. Please supply `function_args`"
+                f" as a tuple (e.g. `function_args=({function_args},)`)"
+            )
+            raise TypeError(suggestion_tuple) from exp
+
+        phase_function = lambda t, x, phase_function=phase_function: phase_function(t, x, *function_args)
 
     try:
+        # TypeError: Value after * must be an iterable, not NoneType
         phase_function(0, U0[:-1])
     except:
-        raise FunctionError('The phase function is not of the correct form. The phase function should take the same inputs as the ODE.')
-
+        message = """The phase function is not of the correct form. The phase function should take 
+        the same inputs as the ODE. Input provided for U0 = {}""".format(U0)
+        raise FunctionError(message)
+    
+    # TODO: Checks for the ODE solver and root solver
+    # Tests
 
     # Set up function to optimize
     def shooting_root(initial_guess):
@@ -292,7 +324,7 @@ def shooting(U0, ode, phase_function, atol=1e-8):
         Y0 = np.array(initial_guess[:-1])
 
         # Solve the ODE
-        t, y = solve_to(ode, 0, Y0, tf=T)
+        t, y = ode_solver(ode, 0, Y0, tf=T, args=function_args)
 
         # Set up the conditions array
         num_vars = len(initial_guess)
@@ -308,7 +340,7 @@ def shooting(U0, ode, phase_function, atol=1e-8):
         return conditions
 
     # TODO: Implement a better root finding algorithm, e.g. particle swarm optimization
-    sol = fsolve(shooting_root, U0)
+    sol = root_solver(shooting_root, U0)
     X0 = np.array(sol[:-1])
     T = sol[-1]
 

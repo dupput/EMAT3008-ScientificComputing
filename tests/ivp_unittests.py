@@ -279,7 +279,26 @@ class Test_shooting(unittest.TestCase):
         assert(np.allclose(y[:, 0], u1_a))
         assert(np.allclose(y[:, 1], u2_a))
 
+    def test_function_args(self):
+        def ODE(t, y, beta=1, sigma=-1):
+            u1 = y[0]
+            u2 = y[1]
+            du1dt = beta*u1 - u2 + sigma*u1*(u1**2 + u2**2)
+            du2dt = u1 + beta*u2 + sigma*u2*(u1**2 + u2**2)
+            return np.array([du1dt, du2dt])
 
+        def phase_function1(t, y):
+            return ODE(t, y, beta=1, sigma=-1)[0]
+        
+        def phase_function2(t, y, beta, sigma):
+            return ODE(t, y, beta=beta, sigma=sigma)[0]
+
+        u0 = np.array([1, 0, 7])
+        X0, T = shooting(u0, ODE, phase_function1)
+        X0_, T_ = shooting(u0, ODE, phase_function2, function_args=(1, -1))
+
+        assert(np.allclose(X0, X0_))
+        assert(np.allclose(T, T_))
 
 
 if __name__ == '__main__':

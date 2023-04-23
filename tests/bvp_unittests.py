@@ -3,12 +3,10 @@ import numpy as np
 
 import sys
 import os
-# Get the current file's directory
+
+# Add SciComp to path
 current_file_directory = os.path.dirname(os.path.realpath(__file__))
-
-# Add the parent directory (project_root) to the Python path
 sys.path.append(os.path.join(current_file_directory, ".."))
-
 
 from SciComp.bvp import BVP, InputError
 class TestBVP(unittest.TestCase):
