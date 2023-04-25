@@ -2,6 +2,14 @@ from math import ceil
 import numpy as np
 import warnings
 
+import os
+import sys
+
+# Add SciComp to path
+current_file_directory = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(os.path.join(current_file_directory, ".."))
+
+
 from SciComp._bvp_base_class import base_BVP
 from SciComp._pde_solvers import *
 from SciComp._ode_solvers import *
@@ -174,7 +182,9 @@ class BVP(base_BVP):
 
         # Method check. Imports are from _pde_solvers.py
         METHODS = {'Scipy Solver' : scipy_solver,
-                   'Explicit Euler': explicit_euler,
+                   'Explicit Euler': lambda self, t: explicit_method(self, t, method='Euler'),
+                   'Explicit RK4': lambda self, t: explicit_method(self, t, method='RK4'),
+                   'Explicit Heun': lambda self, t: explicit_method(self, t, method='Heun'),
                    'Implicit Euler': implicit_euler,
                    'Crank-Nicolson': crank_nicolson}
         if method not in METHODS:
@@ -188,3 +198,40 @@ class BVP(base_BVP):
         u = self.concatanate(u, type='PDE', t=t)
         return u, t, dt, C    
     
+    
+if __name__ == '__main__':
+    # Define PDE 
+    a = 0
+    b = 1
+    alpha = 0
+    beta = 0
+    def f_fun(X, T): 
+        return np.sin(np.pi * (X - a) / (b - a))
+    D = 1
+    N = 100
+
+    bvp = BVP(a, b, N, alpha, beta, D=D, condition_type='Dirichlet', f_fun=f_fun)
+
+    t_boundary = 0
+    C = 0.5
+    t_final = 2
+
+    t, dt, C = bvp.time_discretization(t_boundary, t_final, C=C, method='Explicit Euler')
+    A_, b_, x_array = bvp.construct_matrix()
+
+
+    # u = explicit_method(bvp, t, method='Euler')
+    u, t, dt, C = bvp.solve_PDE(t_boundary, t_final, C=C, method='Explicit RK4')
+    
+    # Get analytical solution
+    analytic_sol = lambda x, t: np.exp(-D * np.pi**2 * t / (b-a)**2) * np.sin(np.pi * (x - a) / (b - a))
+
+    for index in [1000, 3000, 5000, 7000]:
+        numerical_sol = u[:, index]
+        analytical_sol = analytic_sol(bvp.x_values, t[index])
+
+        import matplotlib.pyplot as plt
+        plt.plot(bvp.x_values, numerical_sol, label='Numerical')
+        plt.plot(bvp.x_values, analytical_sol, '--', label='Analytic')
+
+    plt.show()

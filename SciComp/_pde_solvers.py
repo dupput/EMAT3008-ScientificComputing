@@ -1,5 +1,13 @@
 import numpy as np
+
+import os
+import sys
+
+current_file_directory = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(os.path.join(current_file_directory, ".."))
+
 from scipy.integrate import solve_ivp
+from SciComp._ode_solvers import rk4_step, heun_step, euler_step
 
 
 def scipy_solver(bvp, t):
@@ -70,6 +78,59 @@ def explicit_euler(bvp, t):
             else:
                 u[xi, ti+1] = u[xi, ti] + bvp.C * (bvp.beta - 2 * u[xi, ti] + u[xi-1, ti])
 
+    return 
+
+
+def explicit_method(bvp, t, method):
+    """
+    Function to solve the PDE using the explicit methods. It uses centered finite differences to
+    convert the PDE into an ODE. Using the method of lines, the ODE is solved using a step function
+    from _ode_solvers.py
+
+    Parameters
+    ----------
+    bvp : BVP object
+        Boundary value problem to solve. Object instantiated in SciComp/bvp.py.
+    t : numpy.ndarray
+        Array of time values.
+    method: str
+        
+
+    Returns
+    -------
+    solution : numpy.ndarray
+        Solution to the PDE.
+    """
+    METHODS = {
+        'Euler': euler_step,
+        'RK4': rk4_step,
+        'Heun': heun_step
+    }
+    if method not in METHODS:
+        raise ValueError('Invalid method: {}. Method must be one of {}.'.format(method, METHODS.keys()))
+    else:
+        method = METHODS[method]
+
+    A, b, x_array = bvp.construct_matrix()
+
+    u = np.zeros((len(x_array.T), len(t)))
+
+    u[:, 0] = bvp.f_fun(x_array, t[0])
+    u[0, :] = bvp.alpha
+    u[-1, :] = bvp.beta
+
+    # Loop over starting points and solve using solve_to(fun, t0, y0, tf=None, n_max=None, method='RK4', deltat_max=0.01, args=None):
+    # fun must return a numpy array. y0 must be a numpy array.
+    def PDE(t, u):
+        return bvp.C * (A @ u + b)
+
+    nT = len(t)
+    t_ = t[0]
+
+    for n in range(0, nT-1):
+        t_, u[:, n+1] = euler_step(PDE, t_, u[:, n], 1)
+    
+    # u = bvp.concatanate(u, type='PDE', t=t)
     return u
 
 
