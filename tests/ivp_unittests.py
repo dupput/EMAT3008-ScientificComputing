@@ -8,7 +8,7 @@ import os
 current_file_directory = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.join(current_file_directory, ".."))
 
-from SciComp.ivp import solve_to, shooting, InputError, FunctionError
+from SciComp.ivp import solve_ode, shooting, InputError, FunctionError
 
 class Test_solve_to(unittest.TestCase):
     def __init__(self, *args, **kwargs):
@@ -22,7 +22,7 @@ class Test_solve_to(unittest.TestCase):
         t0 = 0
         y0 = np.array(1)
         tf = 1
-        t, y = solve_to(fun, t0, y0, tf=tf, method='RK4')
+        t, y = solve_ode(fun, t0, y0, tf=tf, method='RK4')
         self.assertTrue(np.allclose(y[-1], analytic(tf)))
 
     # Check function errors are caught
@@ -32,7 +32,7 @@ class Test_solve_to(unittest.TestCase):
         y0 = 1
         tf = 1
         with self.assertRaises(FunctionError):
-            solve_to(fun, t0, y0, tf=tf, method='RK4')
+            solve_ode(fun, t0, y0, tf=tf, method='RK4')
 
     # Check mismatching y0 and fun outputs
     def test_3(self):
@@ -49,7 +49,7 @@ class Test_solve_to(unittest.TestCase):
         tf = 1
 
         with self.assertRaises(FunctionError):
-            solve_to(fun, t0, y0, tf=tf, method='RK4')
+            solve_ode(fun, t0, y0, tf=tf, method='RK4')
 
     # Check mismatching y0 and fun outputs
     def test_4(self):
@@ -66,7 +66,7 @@ class Test_solve_to(unittest.TestCase):
         tf = 1
 
         with self.assertRaises(FunctionError):
-            solve_to(fun, t0, y0, tf=tf, method='RK4')
+            solve_ode(fun, t0, y0, tf=tf, method='RK4')
 
     # Check if incorrect input type
     def test_5(self):
@@ -75,7 +75,7 @@ class Test_solve_to(unittest.TestCase):
         y0 = 1
         tf = 10
         with self.assertRaises(InputError):
-            solve_to(fun, t0, y0, tf=tf, method='RK4')
+            solve_ode(fun, t0, y0, tf=tf, method='RK4')
     
 
     # Check if no tf or n_max is given
@@ -84,7 +84,7 @@ class Test_solve_to(unittest.TestCase):
         t0 = 0
         y0 = np.array(1)
         with self.assertRaises(ValueError):
-            solve_to(fun, t0, y0, method='RK4')
+            solve_ode(fun, t0, y0, method='RK4')
 
     # Check that tf > t0
     def test_7(self):
@@ -93,7 +93,7 @@ class Test_solve_to(unittest.TestCase):
         y0 = np.array(1)
         tf = -5
         with self.assertRaises(ValueError):
-            solve_to(fun, t0, y0, tf=tf, method='RK4')
+            solve_ode(fun, t0, y0, tf=tf, method='RK4')
 
     def test_8(self):
         fun = lambda t, y: y
@@ -101,7 +101,7 @@ class Test_solve_to(unittest.TestCase):
         y0 = np.array(1)
         n_max = -5
         with self.assertRaises(ValueError):
-            solve_to(fun, t0, y0, n_max=n_max)
+            solve_ode(fun, t0, y0, n_max=n_max)
 
     # Testing the function solve_ode
     def test_9(self):
@@ -110,7 +110,7 @@ class Test_solve_to(unittest.TestCase):
         y0 = np.array(1)
         tf = 1
         with self.assertRaises(ValueError):
-            solve_to(fun, t0, y0, method='euler')
+            solve_ode(fun, t0, y0, method='euler')
     
     # Test t0 value
     def test_10(self):
@@ -119,7 +119,7 @@ class Test_solve_to(unittest.TestCase):
         y0 = np.array(1)
         tf = 2
         with self.assertRaises(ValueError):
-            solve_to(fun, t0, y0, tf=tf)
+            solve_ode(fun, t0, y0, tf=tf)
 
     # Test n_max value
     def test_11(self):
@@ -128,7 +128,7 @@ class Test_solve_to(unittest.TestCase):
         y0 = np.array(1)
         n_max = 0.5
         with self.assertRaises(ValueError):
-            solve_to(fun, t0, y0, n_max=n_max)
+            solve_ode(fun, t0, y0, n_max=n_max)
 
         # Test n_max value
     def test_12(self):
@@ -137,7 +137,7 @@ class Test_solve_to(unittest.TestCase):
         y0 = np.array(1)
         n_max = 'Not a number'
         with self.assertRaises(ValueError):
-            solve_to(fun, t0, y0, n_max=n_max)
+            solve_ode(fun, t0, y0, n_max=n_max)
 
         # Test n_max value
     def test_13(self):
@@ -146,7 +146,7 @@ class Test_solve_to(unittest.TestCase):
         y0 = np.array(1)
         tf = 'Not a number'
         with self.assertRaises(ValueError):
-            solve_to(fun, t0, y0, n_max=tf)
+            solve_ode(fun, t0, y0, n_max=tf)
 
     # Test delta_t value
     def test_14(self):
@@ -156,7 +156,7 @@ class Test_solve_to(unittest.TestCase):
         tf = 1
         deltat_max = -1
         with self.assertRaises(ValueError):
-            solve_to(fun, t0, y0, tf=tf, deltat_max=deltat_max)
+            solve_ode(fun, t0, y0, tf=tf, deltat_max=deltat_max)
 
     def test_15(self):
         fun = lambda t, y: y
@@ -165,7 +165,7 @@ class Test_solve_to(unittest.TestCase):
         tf = 1
         deltat_max = 0
         with self.assertRaises(ValueError):
-            solve_to(fun, t0, y0, tf=tf, deltat_max=deltat_max)
+            solve_ode(fun, t0, y0, tf=tf, deltat_max=deltat_max)
 
     def test_16(self):
         fun = lambda t, y: y
@@ -174,7 +174,7 @@ class Test_solve_to(unittest.TestCase):
         tf = 1
         deltat_max = 'Not a number'
         with self.assertRaises(ValueError):
-            solve_to(fun, t0, y0, tf=tf, deltat_max=deltat_max)
+            solve_ode(fun, t0, y0, tf=tf, deltat_max=deltat_max)
 # ----------------------------------------------------------------------------- #
 
 # Testing the function shooting
@@ -233,7 +233,7 @@ class Test_shooting(unittest.TestCase):
 
         initial_guess = np.array([0.6, 0.8, 35])
         X0, T = shooting(initial_guess, ode, phase_function)
-        t, y = solve_to(ode, 0, X0, tf=T, method='RK4')
+        t, y = solve_ode(ode, 0, X0, tf=T, method='RK4')
 
         # Check that the phase function is close to zero at the end of the
         # integration and that the final state is close to the initial state
@@ -270,7 +270,7 @@ class Test_shooting(unittest.TestCase):
 
         u0 = np.array([1, 0, 7])
         X0, T = shooting(u0, ODE, phase_function)
-        t, y = solve_to(ODE, 0, X0, tf=T*2, method='RK4')
+        t, y = solve_ode(ODE, 0, X0, tf=T*2, method='RK4')
 
         # Analytical solution
         u1_a = np.sqrt(1)*np.cos(t + T)

@@ -5,7 +5,7 @@ from plotly.subplots import make_subplots
 from math import ceil
 import numpy as np
 import time
-from SciComp.ivp import solve_to
+from SciComp.ivp import solve_ode
 
 def plot_phase_plane_2D(t, y, xsixe=8, ysize=3):
     """
@@ -205,7 +205,7 @@ def run_comparison_diagnostics(ode, ode_analytical, t0, y0, tf, deltas, methods)
     for method in methods:
         for delta in deltas:
             start = time.time()
-            t_array, y_array = solve_to(ode, t0, y0, tf, deltat_max=delta, method=method)
+            t_array, y_array = solve_ode(ode, t0, y0, tf, deltat_max=delta, method=method)
             end = time.time()
             error = np.abs(y_array[-1] - ode_analytical(tf))
             computation_time = end - start
@@ -228,14 +228,14 @@ def run_comparison_diagnostics(ode, ode_analytical, t0, y0, tf, deltas, methods)
     # Find the timestep that gives the same error between the Euler, RK4 and Heun methods
     baseline = 0.1
     rk4_dt_mag = int(np.log10(baseline))
-    t_, y_ = solve_to(ode, t0, y0, tf=tf, method='RK4', deltat_max=baseline)
+    t_, y_ = solve_ode(ode, t0, y0, tf=tf, method='RK4', deltat_max=baseline)
     error = np.abs(y_[-1] - ode_analytical(tf))
     error_mag = int(np.log10(error))
 
     euler_mag = 10
     while euler_mag >= error_mag:
         baseline /= 10
-        t_, y_ = solve_to(ode, t0, y0, tf=tf, method='Euler', deltat_max=baseline)
+        t_, y_ = solve_ode(ode, t0, y0, tf=tf, method='Euler', deltat_max=baseline)
         euler_error = np.abs(y_[-1] - ode_analytical(tf))
         euler_mag = int(np.log10(euler_error))
         if euler_mag == error_mag:
@@ -248,7 +248,7 @@ def run_comparison_diagnostics(ode, ode_analytical, t0, y0, tf, deltas, methods)
     heun_mag = 10
     while heun_mag >= error_mag:
         baseline /= 10
-        t_, y_ = solve_to(ode, t0, y0, tf=tf, method='Heun', deltat_max=baseline)
+        t_, y_ = solve_ode(ode, t0, y0, tf=tf, method='Heun', deltat_max=baseline)
         heun_error = np.abs(y_[-1] - ode_analytical(tf))
         heun_mag = int(np.log10(heun_error))
 

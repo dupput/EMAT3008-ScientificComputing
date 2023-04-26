@@ -386,6 +386,7 @@ class base_BVP():
         t = dt * np.arange(N_time + 1) + t_boundary
         return t, dt, C
     
+    
     def concatanate(self, u, type='ODE', t=None):
         """
         Function to concatanate the solution vector with the boundary conditions.

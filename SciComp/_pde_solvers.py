@@ -32,10 +32,10 @@ def scipy_solver(bvp, t):
 
     if bvp.q_fun is None:
         def PDE(t, u, D, A, b):
-            return D / bvp.dx ** 2 * (A @ u + b)
+            return bvp.C * (A @ u + b)
     else:
         def PDE(t, u, D, A, b):
-            return D / bvp.dx ** 2 * (A @ u + b) + bvp.q_fun(x_array, u)  
+            return bvp.C * (A @ u + b) + bvp.q_fun(x_array, u)  
 
     sol = solve_ivp(PDE, (t[0], t[-1]), u_boundary, method='RK45', t_eval=t, args=(bvp.D, A, b))
 
@@ -93,7 +93,8 @@ def explicit_method(bvp, t, method):
         Boundary value problem to solve. Object instantiated in SciComp/bvp.py.
     t : numpy.ndarray
         Array of time values.
-    method: str
+    method : str
+        Method used for stepping through method of lines ODE.
         
 
     Returns
@@ -118,19 +119,18 @@ def explicit_method(bvp, t, method):
     u[:, 0] = bvp.f_fun(x_array, t[0])
     u[0, :] = bvp.alpha
     u[-1, :] = bvp.beta
+    
+    if bvp.q_fun is None:
+        def PDE(t, u):
+            return bvp.C * (A @ u + b)
+    else:
+        def PDE(t, u, D, A, b):
+            return bvp.C * (A @ u + b) + bvp.q_fun(x_array, u)  
 
-    # Loop over starting points and solve using solve_to(fun, t0, y0, tf=None, n_max=None, method='RK4', deltat_max=0.01, args=None):
-    # fun must return a numpy array. y0 must be a numpy array.
-    def PDE(t, u):
-        return bvp.C * (A @ u + b)
-
-    nT = len(t)
     t_ = t[0]
-
-    for n in range(0, nT-1):
+    for n in range(0, len(t)-1):
         t_, u[:, n+1] = euler_step(PDE, t_, u[:, n], 1)
     
-    # u = bvp.concatanate(u, type='PDE', t=t)
     return u
 
 
@@ -154,12 +154,14 @@ def implicit_euler(bvp, t):
 
     I = np.eye(bvp.shape)
 
+    # Construct left and right sides of equatuiob
     lhs = I - bvp.C * A
     rhs = bvp.C * b
 
     u = np.zeros((len(x_array), len(t)))
     u[:, 0] = bvp.f_fun(x_array, t[0])
 
+    # Solve for each timestep
     for ti in range(0, len(t)-1):
         u[:, ti+1] = np.linalg.solve(lhs, u[:, ti] + rhs)
 

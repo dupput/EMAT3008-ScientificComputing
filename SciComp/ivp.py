@@ -14,7 +14,7 @@ class FunctionError(Exception):
     pass
 
 
-def solve_to(fun, t0, y0, tf=None, n_max=None, method='RK4', deltat_max=0.01, args=None):
+def solve_ode(fun, t0, y0, tf=None, n_max=None, method='RK4', deltat_max=0.01, args=None):
     """Solve an ordinary differential equation.
 
     parameters
@@ -56,7 +56,7 @@ def solve_to(fun, t0, y0, tf=None, n_max=None, method='RK4', deltat_max=0.01, ar
     >>> tf = 20
     >>> deltat_max = 0.1
 
-    >>> t, y = solve_to(fun, t0, y0, tf=tf, method='Euler', deltat_max=deltat_max)
+    >>> t, y = solve_ode(fun, t0, y0, tf=tf, method='Euler', deltat_max=deltat_max)
     """
     # ----------------------- Error checking ----------------------- #
     # args checks
@@ -147,7 +147,7 @@ def solve_to(fun, t0, y0, tf=None, n_max=None, method='RK4', deltat_max=0.01, ar
     return np.array(t_array), np.array(y_array)
 
 
-def shooting(U0, ode, phase_function, ode_solver=solve_to, root_solver=fsolve, atol=1e-8, function_args=None):
+def shooting(U0, ode, phase_function, ode_solver=solve_ode, root_solver=fsolve, atol=1e-8, function_args=None):
     '''
     Shooting method for solving boundary value problems. 
     
@@ -166,7 +166,7 @@ def shooting(U0, ode, phase_function, ode_solver=solve_to, root_solver=fsolve, a
     ode_solver: function, optional
         The ODE solver to be used. The solver should take the form solver(ode, t0, y0, tf, *args), where
         ode is the ODE to be solved, t0 is the initial time, y0 is the initial condition, tf is the
-        final time, and *args are the parameters of the ODE. The default value is solve_to.
+        final time, and *args are the parameters of the ODE. The default value is solve_ode.
     root_solver: function, optional
         The optimization solver to be used. The solver should take the form solver(fun, x0), where
         fun is the function to be minimized and x0 is the initial guess.
@@ -199,7 +199,7 @@ def shooting(U0, ode, phase_function, ode_solver=solve_to, root_solver=fsolve, a
     '''
     # Check that the initial guess is of the correct form for the ODE
     try:
-        solve_to(ode, 0, U0[:-1], n_max=1, args=function_args)
+        solve_ode(ode, 0, U0[:-1], n_max=1, args=function_args)
     except:
         message = """The initial guess, U0, is not of the correct form. The initial guess should be a 
         list of the form [y0, y1, ..., yn, T], where y0, y1, ..., yn are the initial conditions 
