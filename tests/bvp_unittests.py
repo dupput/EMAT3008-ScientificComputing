@@ -236,7 +236,7 @@ class TestBVP(unittest.TestCase):
 
 
     def test_methods(self):
-        methods = ['Scipy Solver', 'Explicit Euler', 'Implicit Euler', 'Crank-Nicolson']
+        methods = ['Scipy Solver', 'Explicit Euler', 'Explicit RK4', 'Explicit Heun', 'Implicit Euler', 'Crank-Nicolson']
         for method in methods:
             u, t, dt, C = self.bvp.solve_PDE(0, 2, C=0.4, method=method)
             self.assertEqual(u.shape, (self.bvp.N+1, len(t)))
