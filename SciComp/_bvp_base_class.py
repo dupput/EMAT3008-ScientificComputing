@@ -2,7 +2,7 @@ from math import ceil
 import warnings
 
 import numpy as np
-import scipy.sparse as sparse
+import scipy.sparse as sp
 
 
 from SciComp._pde_solvers import *
@@ -345,7 +345,11 @@ class base_BVP():
             raise ValueError('condition_type must be either Dirichlet or Neumann or Robin')
         
         if self.sparse:
-            A = sparse.coo_matrix(A)
+            main_diag = np.diag(A)
+            diag_below = np.diag(A, k=-1)
+            diag_above = np.diag(A, k=1)
+
+            A = sp.diags([diag_below, main_diag, diag_above], [-1, 0, 1])
         
         return A, b, x_array
 

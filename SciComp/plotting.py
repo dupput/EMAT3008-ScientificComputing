@@ -11,6 +11,10 @@ import numpy as np
 import time
 
 from SciComp.ivp import solve_ode
+from SciComp.bvp import BVP
+
+import timeit
+
 
 def plot_phase_plane_2D(t, y, xsixe=8, ysize=3):
     """
@@ -157,34 +161,29 @@ def plot_PDE_fixed_time(x, u, t, analytic_sol):
     fig.show()
 
 
-def run_comparison_diagnostics(ode, ode_analytical, t0, y0, tf, deltas, methods):
+def run_comparison_diagnostics():
     """
     Compare the accuracy and computation time of different methods for solving
     an ODE. Displays a plot of the error and computation time for each method
     for each step size as well as printing some statistics.
-
-    Parameters
-    ----------
-    ode : function
-        The ODE function.
-    fun_analytical : function
-        The analytical solution to the ODE.
-    t0 : float
-        The initial time.
-    y0 : array
-        The initial conditions.
-    tf : float
-        The final time.
-    deltas : array
-        The step sizes to use.
-    methods : array
-        The methods to use.
 
     Returns
     -------
     None.
     
     """
+    import numpy as np
+
+    # Define ODE
+    ode = lambda t, y: y
+    ode_analytical = lambda t: np.exp(t)
+    t0 = 0
+    y0 = np.array([1])
+    tf = 1
+    # COMPARISON OF EFFECT OF STEP SIZE
+    deltas = [0.01, 0.005, 0.002, 0.001, 0.0005, 0.0001]
+    methods = ['Euler', 'RK4', 'Heun']
+
     # Create subplots in matplotlib
     # fig = make_subplots(rows=1, cols=2, subplot_titles=('Error', 'Computation time'))
     fig, ax = plt.subplots(1, 2, figsize=(10, 3))
@@ -487,4 +486,72 @@ def plot_PDE(bvp, u, t):
     ax.set_ylabel('u')
     plt.tight_layout()
 
+    plt.show()
+
+
+def sparse_diagnostics():
+    """
+    Plot the time taken to solve the BVP using the sparse and non-sparse methods.
+
+    Returns
+    -------
+    None.
+    """
+
+
+    # Initialize a BVP instance with the given parameters
+    a = 0
+    b = 1
+    alpha = 0
+    beta = 0
+    f_fun = lambda x, t: np.sin(np.pi * (x - a) / (b - a))
+    D = 0.1
+    N = 200
+
+    def nonsparse(N):
+        bvp = BVP(a, b, N, alpha, beta, condition_type='Dirichlet', D=D, f_fun=f_fun)
+        u, t, dt, C = bvp.solve_PDE(0, 2, C=0.4, method='Crank-Nicolson')
+        return bvp
+
+    def sparse(N):
+        bvp = BVP(a, b, N, alpha, beta, condition_type='Dirichlet', D=D, f_fun=f_fun, sparse=True)
+        u, t, dt, C = bvp.solve_PDE(0, 2, C=0.4, method='Crank-Nicolson')
+        return bvp
+
+    times = []
+    storage = []
+
+    for N in [25, 50, 75, 100, 125, 150, 175, 200]:
+        print(f'Running tests for N = {N}', end='\r')
+        bvp_non = nonsparse(N)
+        bvp_sparse = sparse(N)
+        A_non, _, _ = bvp_non.construct_matrix()
+        A_sparse, _, _ = bvp_sparse.construct_matrix()
+        data_size = A_sparse.data.nbytes
+
+        storage.append([A_non.nbytes, data_size])
+        
+        duration_non = timeit.timeit(lambda: nonsparse(N), number=2)
+        duration_sparse = timeit.timeit(lambda: sparse(N), number=2)
+        times.append([duration_non, duration_sparse])
+
+    # Plot results. Both time and storage on same plot with two y-axes
+    import matplotlib.pyplot as plt
+    fig, ax1 = plt.subplots(figsize=(8, 4))
+    ax1.plot([25, 50, 75, 100, 125, 150, 175, 200], [t[0] for t in times], 'b-')
+    ax1.plot([25, 50, 75, 100, 125, 150, 175, 200], [t[1] for t in times], 'b--')
+    ax1.set_xlabel('N')
+    ax1.set_ylabel('Time (s)', color='b')
+    ax1.tick_params('y', colors='b')
+
+    ax2 = ax1.twinx()
+    ax2.plot([25, 50, 75, 100, 125, 150, 175, 200], [s[0] for s in storage], 'r-')
+    ax2.plot([25, 50, 75, 100, 125, 150, 175, 200], [s[1] for s in storage], 'r--')
+    ax2.set_ylabel('Storage (bytes)', color='r')
+    ax2.tick_params('y', colors='r')
+
+
+    legend = ['Non-sparse matrices', 'Sparse matrices']
+    plt.title('Comparison of sparse and non-sparse matrices')
+    plt.legend(legend)
     plt.show()
