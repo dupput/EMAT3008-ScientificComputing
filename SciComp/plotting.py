@@ -555,3 +555,180 @@ def sparse_diagnostics():
     plt.title('Comparison of sparse and non-sparse matrices')
     plt.legend(legend)
     plt.show()
+
+
+def run_comparison_ode_solvers():
+    a = 0
+    b = 1
+    N = 100
+    alpha = 0
+    beta = 0
+    D = 1
+    mu = 0.01
+
+    def q(x, u):
+        return np.exp(mu*u)
+
+    def u_analytic(x):
+        return -1/2 * (x - a) * (x - b) + ((beta - alpha) / (b - a)) * (x - a) + alpha
+
+
+    bvp = BVP(a, b, N, alpha, beta, condition_type='Dirichlet', q_fun=q, D=D)
+    u_guess = np.zeros(N-1)
+
+    methods = ['linear', 'tridiagonal', 'nonlinear']
+
+    u_analytical = u_analytic(bvp.x_values)
+
+    data = []
+    for method in methods:
+        u, success = bvp.solve_ODE(u_guess, method)
+        time = timeit.timeit(lambda: bvp.solve_ODE(u_guess, method), number=1)
+        error = np.linalg.norm(u - u_analytical)
+        data.append([method, time, error])
+
+    # Grouped bar chart, two y-axes
+    fig, ax1 = plt.subplots(figsize=(8, 4))
+    ax2 = ax1.twinx()
+
+    # Plot data
+    x = np.arange(len(methods))
+    width = 0.4
+    ax1.bar(x - width/2, [row[1] for row in data], width, label='Time', color='tab:blue')
+    ax2.bar(x + width/2, [row[2] for row in data], width, label='Error', color='tab:orange')
+
+    # Set labels
+    ax1.set_xlabel('Method')
+    ax1.set_ylabel('Time (s)')
+    ax2.set_ylabel('Error')
+    plt.yscale('log')
+
+    # Set ticks
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(methods)
+
+    # Set legend
+    ax1.legend(loc='upper left')
+    ax2.legend(loc='upper right')
+
+    plt.show()
+
+
+def run_comparison_pde_solvers():
+    # Define BVP problem
+    a = 0
+    b = 1
+    alpha = 0
+    beta = 0
+    N = 200
+    D = 0.1
+    f_fun = lambda x, t: np.sin(np.pi * x)
+    bvp = BVP(a, b, N, alpha, beta, D=D, condition_type='Dirichlet', f_fun=f_fun)
+
+    # Known solution
+    idx = np.where(bvp.x_values == 0.5)[0][0]
+    exact = np.exp(-0.2 * np.pi**2)
+
+    t_boundary = 0
+    C = 0.5
+    dt = 0.04
+    t_final = 2
+
+    data1 = {
+        'Scipy Solver': [],
+        'Explicit Euler': [],
+        'Explicit RK4': [],
+        'Implicit Euler': [],
+        'Crank-Nicolson': [],
+        'Crank-Nicolson Sparse': [],
+    }
+
+    data2 = {
+        'Scipy Solver': [],
+        'Explicit Euler': [],
+        'Explicit RK4': [],
+        'Implicit Euler': [],
+        'Crank-Nicolson': [],   
+        'Crank-Nicolson Sparse': [],
+    }
+
+    for method in data1.keys():
+        # print(f'Running {method} solver')
+        if method == 'Crank-Nicolson Sparse':
+            bvp = BVP(a, b, N, alpha, beta, D=D, condition_type='Dirichlet', f_fun=f_fun, sparse=True)
+            solution, t, dt, C = bvp.solve_PDE(t_boundary, t_final, C=C, method='Crank-Nicolson')
+            time_taken = timeit.timeit(lambda: bvp.solve_PDE(t_boundary, t_final, dt=dt, method='Crank-Nicolson'), number=2)
+
+        else:
+            solution, t, dt, C = bvp.solve_PDE(t_boundary, t_final, C=C, method=method)
+            time_taken = timeit.timeit(lambda: bvp.solve_PDE(t_boundary, t_final, dt=dt, method=method), number=2)
+        
+        error = np.abs(solution[idx, -1] - exact)
+        error_mag = np.log10(error)
+        data1[method] = [error, error_mag, time_taken]
+
+    bvp = BVP(a, b, N, alpha, beta, D=D, condition_type='Dirichlet', f_fun=f_fun)
+    dt = 0.04
+    for method in data2.keys():
+        # print(f'Running {method} solver')
+        if method == 'Crank-Nicolson Sparse':
+            bvp = BVP(a, b, N, alpha, beta, D=D, condition_type='Dirichlet', f_fun=f_fun, sparse=True)
+            solution, t, dt, C = bvp.solve_PDE(t_boundary, t_final, dt=dt, method='Crank-Nicolson')
+            time_taken = timeit.timeit(lambda: bvp.solve_PDE(t_boundary, t_final, dt=dt, method='Crank-Nicolson'), number=2)
+
+        else:
+            solution, t, dt, C = bvp.solve_PDE(t_boundary, t_final, dt=dt, method=method)
+            time_taken = timeit.timeit(lambda: bvp.solve_PDE(t_boundary, t_final, dt=dt, method=method), number=2)
+        
+        error = np.abs(solution[idx, -1] - exact)
+        error_mag = np.log10(error)
+        data2[method] = [error, error_mag, time_taken]
+
+    # Plot results
+    plt.figure(figsize=(12, 6))
+    plt.suptitle('dt = 0.000125')
+    plt.subplot(1, 2, 1)
+    plt.title('Error')
+    plt.bar(data1.keys(), [data1[key][0] for key in data1.keys()])
+    plt.yscale('log')
+    plt.ylabel('Error')
+    plt.ylim([1e-6, 1e1])
+    plt.xticks(rotation=45)
+
+
+    plt.subplot(1, 2, 2)
+    plt.title('Time taken')
+    plt.bar(data1.keys(), [data1[key][2] for key in data1.keys()])
+    plt.yscale('log')
+    plt.ylabel('Time taken (s)')
+    plt.ylim([1e-3, 1e2])
+    plt.xticks(rotation=45)
+
+    plt.show()
+
+
+    plt.figure(figsize=(12, 6))
+    plt.subplot(1, 2, 1)
+    plt.title('Error')
+    plt.bar(data2.keys(), [data2[key][0] for key in data2.keys()])
+    plt.yscale('log')
+    plt.ylabel('Error')
+    plt.ylim([1e-6, 1e1])
+    plt.xticks(rotation=45)
+
+    plt.subplot(1, 2, 2)
+    plt.title('Time taken')
+    plt.bar(data2.keys(), [data2[key][2] for key in data2.keys()])
+    plt.yscale('log')
+    plt.ylabel('Time taken (s)')
+    plt.ylim([1e-3, 1e2])
+
+    # x tick angle
+    plt.xticks(rotation=45)
+
+    # Set figure title
+    plt.suptitle('dt = 0.04') 
+
+    plt.show()
+
+
