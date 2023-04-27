@@ -16,7 +16,7 @@ from SciComp.bvp import BVP
 import timeit
 
 
-def plot_phase_plane_2D(t, y, xsixe=8, ysize=3):
+def plot_phase_plane_2D(t, y, xsixe=8, ysize=5):
     """
     Plot the phase plane for a 2D ODE.
 
@@ -46,7 +46,7 @@ def plot_phase_plane_2D(t, y, xsixe=8, ysize=3):
     if len(t) != len(y):
         raise ValueError('t and y must have the same length.')
 
-    fig, ax = plt.subplots(1, 2, figsize=(12, 6))
+    fig, ax = plt.subplots(1, 2, figsize=(12, 4))
     ax[0].plot(t, y[:,0], label='x')
     ax[0].plot(t, y[:,1], label='y')
     ax[0].legend()

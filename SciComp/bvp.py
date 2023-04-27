@@ -86,6 +86,27 @@ class BVP(base_BVP):
             Solution to the boundary value problem. solution is a vector of size x_array.
         success : bool
             Boolean indicating whether the solver was successful or not.
+
+        Examples
+        --------
+        >>> a = 0
+        >>> b = 1
+        >>> N = 100
+        >>> alpha = 0
+        >>> beta = 0
+        >>> D = 1
+        >>> mu = 0.01
+
+        >>> def q(x, u):
+        >>>     return np.exp(mu*u)
+
+        >>> def u_analytic(x):
+        >>>     return -1/2 * (x - a) * (x - b) + ((beta - alpha) / (b - a)) * (x - a) + alpha
+
+
+        >>> bvp = BVP(a, b, N, alpha, beta, condition_type='Dirichlet', q_fun=q, D=D)
+        >>> u_guess = np.zeros(N-1)
+        >>> u, success = bvp.solve_ODE(u_guess, method)
         """
         # Sparse matrix only works with linear method
         if self.sparse and method != 'linear':
@@ -210,39 +231,3 @@ class BVP(base_BVP):
         return u, t, dt, C    
     
     
-if __name__ == '__main__':
-    # Define PDE 
-    a = 0
-    b = 1
-    alpha = 0
-    beta = 0
-    def f_fun(X, T): 
-        return np.sin(np.pi * (X - a) / (b - a))
-    D = 1
-    N = 100
-
-    bvp = BVP(a, b, N, alpha, beta, D=D, condition_type='Dirichlet', f_fun=f_fun)
-
-    t_boundary = 0
-    C = 0.5
-    t_final = 2
-
-    t, dt, C = bvp.time_discretization(t_boundary, t_final, C=C, method='Explicit Euler')
-    A_, b_, x_array = bvp.construct_matrix()
-
-
-    # u = explicit_method(bvp, t, method='Euler')
-    u, t, dt, C = bvp.solve_PDE(t_boundary, t_final, C=C, method='Explicit RK4')
-    
-    # Get analytical solution
-    analytic_sol = lambda x, t: np.exp(-D * np.pi**2 * t / (b-a)**2) * np.sin(np.pi * (x - a) / (b - a))
-
-    for index in [1000, 3000, 5000, 7000]:
-        numerical_sol = u[:, index]
-        analytical_sol = analytic_sol(bvp.x_values, t[index])
-
-        import matplotlib.pyplot as plt
-        plt.plot(bvp.x_values, numerical_sol, label='Numerical')
-        plt.plot(bvp.x_values, analytical_sol, '--', label='Analytic')
-
-    plt.show()
