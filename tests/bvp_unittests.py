@@ -219,7 +219,9 @@ class TestBVP(unittest.TestCase):
         f_fun = lambda x, t: np.sin(np.pi * (x - a) / (b - a))
         D = 0.1
         N = 100
+        
         self.bvp = BVP(a, b, N, alpha, beta, D=D, condition_type='Dirichlet', f_fun=f_fun)
+        self.bvp_sparse = BVP(a, b, N, alpha, beta, D=D, condition_type='Dirichlet', f_fun=f_fun, sparse=True)
 
     def test_type_errors(self):
         with self.assertRaises(TypeError):
@@ -245,6 +247,14 @@ class TestBVP(unittest.TestCase):
             self.assertTrue(dt > 0)
             self.assertTrue(C > 0)
 
+    def test_sparse(self):
+        methods = ['Crank-Nicolson', 'Implicit Euler']
+        for method in methods:
+            u, t, dt, C = self.bvp.solve_PDE(0, 2, C=0.4, method=method)
+            u_sparse, t_sparse, dt_sparse, C_sparse = self.bvp_sparse.solve_PDE(0, 2, C=0.4, method=method)
+            self.assertTrue(np.allclose(u, u_sparse))
+
+
     def test_time_step(self):
         u1, t1, dt1, C1 = self.bvp.solve_PDE(0, 2, dt=0.1, C=None)
         u2, t2, dt2, C2 = self.bvp.solve_PDE(0, 2, dt=None, C=0.5)
@@ -269,7 +279,7 @@ class TestBVP(unittest.TestCase):
     def test_invalid_number_of_points(self):
         with self.assertRaises(ValueError):
             BVP(a=0, b=1, N=-1, alpha=1)
-        
+ 
 
 
 if __name__ == '__main__':

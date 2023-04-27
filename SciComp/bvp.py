@@ -56,10 +56,12 @@ class BVP(base_BVP):
         Function to define the boundary conditions. Default value is None.
     D_const : float, optional
         Constant coefficient in the differential equation. Default value is None.
+    sparse : bool, optional
+        Boolean indicating whether to use sparse matrices or not. Default value is False.
     """
     def __init__(self, a, b, N, alpha, beta=None, delta=None, gamma=None, condition_type=None, 
-                 q_fun=None, f_fun=None, D=1):
-        super().__init__(a, b, N, alpha, beta, delta, gamma, condition_type, q_fun, f_fun, D)
+                 q_fun=None, f_fun=None, D=1, sparse=False):
+        super().__init__(a, b, N, alpha, beta, delta, gamma, condition_type, q_fun, f_fun, D, sparse)
 
 
     def solve_ODE(self, u_array=None, method='linear'):
@@ -85,6 +87,10 @@ class BVP(base_BVP):
         success : bool
             Boolean indicating whether the solver was successful or not.
         """
+        # Sparse matrix only works with linear method
+        if self.sparse and method != 'linear':
+            raise ValueError('Sparse matrices can only be used with linear method.')
+
         # Method check
         METHODS = {'linear': solve_matrices, 'tridiagonal': solve_thomas_algorithm,
                    'nonlinear': solve_nonlinear}
@@ -179,6 +185,10 @@ class BVP(base_BVP):
 
         # Discretize time
         t, dt, C = self.time_discretization(t_boundary, t_final, dt=dt, C=C, method=method)
+
+        # Sparse matrix only supported for Crank-Nicolson, Implicit Euler
+        if self.sparse and method not in ['Crank-Nicolson', 'Implicit Euler']:
+            raise ValueError('Sparse matrix only supported for Crank-Nicolson and Implicit Euler')
 
         # Method check. Imports are from _pde_solvers.py
         METHODS = {'Scipy Solver' : scipy_solver,

@@ -1,6 +1,9 @@
 from math import ceil 
-import numpy as np
 import warnings
+
+import numpy as np
+import scipy.sparse as sparse
+
 
 from SciComp._pde_solvers import *
 from SciComp._ode_solvers import *
@@ -52,9 +55,11 @@ class base_BVP():
         Function to define the boundary conditions. Default value is None.
     D_const : float, optional
         Constant coefficient in the differential equation. Default value is None.
+    sparse : bool, optional
+        If True, use sparse matrices in the PDE solver. Default value is False.
     """
     def __init__(self, a, b, N, alpha, beta=None, delta=None, gamma=None, condition_type=None, 
-                 q_fun=None, f_fun=None, D=1):
+                 q_fun=None, f_fun=None, D=1, sparse=False):
         self.a = a
         self.b = b
         self.alpha = alpha
@@ -66,6 +71,7 @@ class base_BVP():
         self.q_fun = q_fun
         self.f_fun = f_fun
         self.D = D
+        self.sparse = sparse
 
         # Construct the grid
         self.grid_discretisation()
@@ -337,6 +343,9 @@ class base_BVP():
         
         else:
             raise ValueError('condition_type must be either Dirichlet or Neumann or Robin')
+        
+        if self.sparse:
+            A = sparse.coo_matrix(A)
         
         return A, b, x_array
 

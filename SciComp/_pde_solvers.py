@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.sparse as sp
 
 import os
 import sys
@@ -152,7 +153,10 @@ def implicit_euler(bvp, t):
     """
     A, b, x_array = bvp.construct_matrix()
 
-    I = np.eye(bvp.shape)
+    if bvp.sparse:
+        I = sp.eye(bvp.shape)
+    else:
+        I = np.eye(bvp.shape)
 
     # Construct left and right sides of equatuiob
     lhs = I - bvp.C * A
@@ -163,7 +167,11 @@ def implicit_euler(bvp, t):
 
     # Solve for each timestep
     for ti in range(0, len(t)-1):
-        u[:, ti+1] = np.linalg.solve(lhs, u[:, ti] + rhs)
+
+        if bvp.sparse:
+            u[:, ti+1] = sp.linalg.spsolve(lhs, u[:, ti] + rhs)
+        else:
+            u[:, ti+1] = np.linalg.solve(lhs, u[:, ti] + rhs)
 
     return u
 
@@ -186,7 +194,11 @@ def crank_nicolson(bvp, t):
     """
     A, b, x_array = bvp.construct_matrix()
 
-    I = np.eye(bvp.shape)
+    if bvp.sparse:
+        I = sp.eye(bvp.shape)
+    else:
+        I = np.eye(bvp.shape)
+
 
     lhs = I - bvp.C * A / 2
     rhs = I + bvp.C * A / 2
@@ -195,6 +207,9 @@ def crank_nicolson(bvp, t):
     u[:, 0] = bvp.f_fun(x_array, t[0])
 
     for ti in range(0, len(t)-1):
-        u[:, ti+1] = np.linalg.solve(lhs, rhs @ u[:, ti] + bvp.C * b)
+        if bvp.sparse:
+            u[:, ti+1] = sp.linalg.spsolve(lhs, rhs @ u[:, ti] + bvp.C * b)
+        else:
+            u[:, ti+1] = np.linalg.solve(lhs, rhs @ u[:, ti] + bvp.C * b)
 
     return u

@@ -1,10 +1,15 @@
 import matplotlib.pyplot as plt
 from matplotlib import animation
+from matplotlib import cm
+from matplotlib.ticker import LinearLocator
+
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+
 from math import ceil
 import numpy as np
 import time
+
 from SciComp.ivp import solve_ode
 
 def plot_phase_plane_2D(t, y, xsixe=8, ysize=3):
@@ -439,3 +444,47 @@ def plot_max_u_vs_C(Cs, all_u, xsixe=8, ysize=3):
     plt.show()
 
 
+def plot_PDE(bvp, u, t):
+    """
+    Plot the solution of the PDE.
+
+    Parameters
+    ----------
+    bvp : BVP
+        The BVP object.
+    u : array
+        The solution of the PDE.
+    t : array
+        The time array.
+
+    Returns
+    -------
+    None.
+    """ 
+
+    # Two subplots, one axes is 3d and the other is 2d
+    fig = plt.figure(figsize=(12, 6))
+    ax = fig.add_subplot(1, 2, 1, projection='3d')
+
+    # Create a meshgrid of 2D arrays for t and bvp.x_values
+    T, BVP_X = np.meshgrid(t, bvp.x_values)
+
+    # Plot the surface.
+    surf = ax.plot_surface(BVP_X, T, u, cmap=cm.coolwarm,
+                            linewidth=0, antialiased=False)      
+
+    # Customize the z axis.
+    ax.set_zlim(-0.01, 1.01)
+    ax.zaxis.set_major_locator(LinearLocator(10))
+    ax.set_xlabel('x')
+    ax.set_ylabel('t')
+    ax.set_zlabel('u')
+
+    # Now plot the 2D plot at t = 5
+    ax = fig.add_subplot(1, 2, 2)
+    ax.plot(bvp.x_values, u[:, 100])
+    ax.set_xlabel(f'x (t = {t[100]:.2f})')
+    ax.set_ylabel('u')
+    plt.tight_layout()
+
+    plt.show()

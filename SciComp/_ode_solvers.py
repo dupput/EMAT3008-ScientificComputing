@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.optimize import root
+import scipy.sparse as sp
 
 def euler_step(fun, t, y, h):
     """Perform one step of the Euler method.
@@ -126,7 +127,11 @@ def solve_matrices(bvp, A, b, u_array=None, x_array=None):
 
     try:        
         # Solve the linear system
-        u = np.linalg.solve(A, -b)
+        if bvp.sparse:
+            u = sp.linalg.spsolve(A, -b)
+        else:
+            u = np.linalg.solve(A, -b)
+    
         success = True
 
         return u, success
