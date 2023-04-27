@@ -213,3 +213,42 @@ def crank_nicolson(bvp, t):
             u[:, ti+1] = np.linalg.solve(lhs, rhs @ u[:, ti] + bvp.C * b)
 
     return u
+
+
+def imex_euler(bvp, t):
+    """
+    Function to solve the PDE using the IMEX Euler method.
+
+    Parameters
+    ----------
+    bvp : BVP object
+        Boundary value problem to solve. Object instantiated in SciComp/bvp.py.
+    t : numpy.ndarray
+        Array of time values.
+
+    Returns
+    -------
+    solution : numpy.ndarray
+        Solution to the PDE.
+    """
+    A, b, x_array = bvp.construct_matrix()
+
+    I = np.eye(bvp.shape)
+
+    # Construct left and right sides of the equation for the implicit part (diffusive terms)
+    lhs = I - bvp.C * A
+    rhs = bvp.C * b
+
+    u = np.zeros((len(x_array), len(t)))
+    u[:, 0] = bvp.f_fun(x_array, t[0])
+
+    # Solve for each timestep
+    for ti in range(0, len(t)-1):
+        # Implicit part (diffusive terms)
+        u[:, ti+1] = np.linalg.solve(lhs, u[:, ti] + rhs)
+
+        # Explicit part (nonlinear terms)
+        if bvp.q_fun is not None:
+            u[:, ti+1] += bvp.q_fun(x_array, t[ti], u[:, ti])
+
+    return u

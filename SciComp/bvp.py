@@ -196,7 +196,8 @@ class BVP(base_BVP):
                    'Explicit RK4': lambda self, t: explicit_method(self, t, method='RK4'),
                    'Explicit Heun': lambda self, t: explicit_method(self, t, method='Heun'),
                    'Implicit Euler': implicit_euler,
-                   'Crank-Nicolson': crank_nicolson}
+                   'Crank-Nicolson': crank_nicolson,
+                   'IMEX Euler': imex_euler}
         if method not in METHODS:
             raise ValueError('Invalid method: {}. Method must be one of {}.'.format(method, METHODS.keys()))
         else:
